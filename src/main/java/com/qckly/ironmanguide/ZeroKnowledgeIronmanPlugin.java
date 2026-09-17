@@ -33,12 +33,16 @@ public class ZeroKnowledgeIronmanPlugin extends Plugin
     private OverlayManager overlayManager;
 
     @Inject
+    private ConfigManager configManager;
+
+    @Inject
     private ModelOutlineRenderer modelOutlineRenderer;
 
     @Inject
     private ZeroKnowledgeIronmanConfig config;
 
     private GuideState guideState;
+    private GuideProgressStore progressStore;
     private TutorialStateTracker tutorialStateTracker;
     private ZeroKnowledgeIronmanPanel panel;
     private ZeroKnowledgeIronmanOverlay objectiveOverlay;
@@ -55,8 +59,23 @@ public class ZeroKnowledgeIronmanPlugin extends Plugin
     protected void startUp()
     {
         guideState = new GuideState(GuideRepository.getSteps());
+        progressStore = new GuideProgressStore(configManager);
+
+        // Restore the last stable step first. If live game-state detection is
+        // confident, it may correct this below; otherwise this is our fallback.
+        String savedStepId = progressStore.loadLastStepId();
+        if (savedStepId != null)
+        {
+            guideState.setCurrentStepId(savedStepId);
+        }
+
         tutorialStateTracker = new TutorialStateTracker(client);
         tutorialStateTracker.refresh();
+
+        syncGuideStateFromGame();
+
+        guideState.addListener(this::persistCurrentStep);
+        persistCurrentStep();
 
         panel = new ZeroKnowledgeIronmanPanel(guideState, tutorialStateTracker);
 
@@ -92,6 +111,35 @@ public class ZeroKnowledgeIronmanPlugin extends Plugin
         if (tutorialStateTracker != null)
         {
             tutorialStateTracker.refresh();
+            syncGuideStateFromGame();
+        }
+    }
+
+    private void syncGuideStateFromGame()
+    {
+        if (guideState == null || tutorialStateTracker == null)
+        {
+            return;
+        }
+
+        String detectedStepId = TutorialStepResolver.resolve(tutorialStateTracker);
+        if (detectedStepId != null)
+        {
+            guideState.setCurrentStepId(detectedStepId);
+        }
+    }
+
+    private void persistCurrentStep()
+    {
+        if (guideState == null || progressStore == null)
+        {
+            return;
+        }
+
+        GuideStep step = guideState.getCurrentStep();
+        if (step != null)
+        {
+            progressStore.saveLastStepId(step.getId());
         }
     }
 
@@ -118,6 +166,7 @@ public class ZeroKnowledgeIronmanPlugin extends Plugin
         objectiveOverlay = null;
         panel = null;
         tutorialStateTracker = null;
+        progressStore = null;
         guideState = null;
     }
 
