@@ -44,6 +44,7 @@ public final class GuideRepository
                 null,
                 null,
                 null,
+                null,
                 false
             ));
         }
@@ -94,6 +95,10 @@ public final class GuideRepository
                 else if (trimmed.startsWith("**EQUIPPED:**"))
                 {
                     current.addRequirement(fieldValue(trimmed, "**EQUIPPED:**"));
+                }
+                else if (trimmed.startsWith("**RECOMMENDED:**"))
+                {
+                    current.addRecommended(fieldValue(trimmed, "**RECOMMENDED:**"));
                 }
                 else if (trimmed.startsWith("**DO:**"))
                 {
@@ -194,6 +199,7 @@ public final class GuideRepository
         private String why = "";
         private String target;
         private String requirement;
+        private String recommendedItems;
         private String completeWhen;
         private boolean optional;
 
@@ -238,6 +244,17 @@ public final class GuideRepository
                 : requirement + "\n" + value;
         }
 
+        private void addRecommended(String value)
+        {
+            if (value == null || value.isEmpty())
+            {
+                return;
+            }
+            recommendedItems = recommendedItems == null || recommendedItems.isEmpty()
+                ? value
+                : recommendedItems + "\n" + value;
+        }
+
         private void addWhy(String value)
         {
             if (value == null || value.isEmpty())
@@ -267,6 +284,7 @@ public final class GuideRepository
                 why,
                 target,
                 requirement,
+                recommendedItems,
                 finalCompleteWhen,
                 optional
             );
