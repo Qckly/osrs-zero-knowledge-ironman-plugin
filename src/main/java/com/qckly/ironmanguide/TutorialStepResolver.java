@@ -1,12 +1,15 @@
 package com.qckly.ironmanguide;
 
 /**
- * Converts live Tutorial Island state into a guide step only when the mapping is
- * considered reliable.
+ * Maps the live Tutorial Island varp to the exact guide step.
  *
- * Unknown/ambiguous states intentionally return null. The plugin then keeps the
- * persisted last step instead of guessing and potentially moving the user
- * backwards or forwards incorrectly.
+ * IMPORTANT:
+ * Tutorial Island already exposes a dedicated progression varp. Prefer that
+ * server-driven state over inventory heuristics. Inventory/equipment checks are
+ * used only inside a single varp state where the game intentionally groups more
+ * than one action together.
+ *
+ * Reference: OSRS Tutorial Island state varp (281 / VarPlayerID.TUTORIAL).
  */
 public final class TutorialStepResolver
 {
@@ -21,264 +24,166 @@ public final class TutorialStepResolver
             return null;
         }
 
-        int progress = state.getTutorialProgress();
+        final int progress = state.getTutorialProgress();
 
-        // --- A/B: Character creation + Survival Expert ---------------------
-        if (progress == 10 || progress == 20)
+        switch (progress)
         {
-            if (state.hasInventoryItem("small fishing net"))
-            {
+            // Character creation / Gielinor Guide
+            case 1:
+                return "000.01";
+            case 2:
+            case 3:
+            case 7:
+                return "000.03";
+            case 10:
+                return "000.04";
+
+            // Survival Expert
+            case 20:
+                return "000.05";
+            case 30:
                 return "000.06";
-            }
-            return "000.05";
-        }
-
-        if (progress == 30)
-        {
-            // OSRS is explicitly waiting for the inventory tutorial here.
-            return "000.06";
-        }
-
-        if (progress == 40)
-        {
-            // If the shrimp already exists, the fishing action is complete even
-            // if the next UI transition has not yet updated the varp.
-            if (state.hasAnyInventoryItem("raw shrimps", "shrimps"))
-            {
+            case 40:
+                return "000.07";
+            case 50:
                 return "000.08";
-            }
-            return "000.07";
-        }
-
-        if (progress == 50)
-        {
-            return state.isSkillsVisible() ? "000.09" : "000.08";
-        }
-
-        if (progress == 60)
-        {
-            if (state.hasInventoryItem("bronze axe") && state.hasInventoryItem("tinderbox"))
-            {
-                return "000.10";
-            }
-            return "000.09";
-        }
-
-        // Survival crafting/cooking phase. Inventory is more useful than a
-        // coarse varp here, so we combine both.
-        if (progress > 60 && progress < 120)
-        {
-            boolean hasAxe = state.hasInventoryItem("bronze axe");
-            boolean hasTinderbox = state.hasInventoryItem("tinderbox");
-            boolean hasLogs = state.hasInventoryItem("logs");
-            boolean hasRawShrimp = state.hasInventoryItem("raw shrimps");
-            boolean hasCookedShrimp = state.hasInventoryItem("shrimps");
-
-            if (!hasAxe || !hasTinderbox)
-            {
+            case 60:
                 return "000.09";
-            }
-
-            if (hasCookedShrimp && !hasRawShrimp)
-            {
+            case 70:
+                return "000.10"; // Cut tree
+            case 80:
+                return "000.11"; // Make fire
+            case 90:
+                return "000.12"; // Cook raw shrimp
+            case 120:
+            case 130:
                 return "000.13";
-            }
 
-            if (hasLogs)
-            {
-                return "000.11";
-            }
-
-            if (hasRawShrimp)
-            {
-                // With the logs consumed, the player is normally at the
-                // fire/cooking part. We cannot yet prove a fire exists, so this
-                // is the furthest safe step.
-                return "000.12";
-            }
-
-            return "000.10";
-        }
-
-        // --- C: Master Chef ------------------------------------------------
-        if (progress == 120 || progress == 130)
-        {
-            return "000.13";
-        }
-
-        if (progress >= 140 && progress < 200)
-        {
-            if (state.hasInventoryItem("bread"))
-            {
-                return "000.17";
-            }
-
-            if (state.hasInventoryItem("bread dough"))
-            {
-                return "000.16";
-            }
-
-            if (state.hasInventoryItem("pot of flour") && state.hasInventoryItem("bucket of water"))
-            {
+            // Master Chef
+            case 140:
+                return "000.14";
+            case 150:
                 return "000.15";
-            }
+            case 160:
+                return "000.16";
+            case 170:
+            case 200:
+                return "000.17";
 
-            return "000.14";
-        }
+            // Quest Guide
+            case 220:
+                return "000.18";
+            case 230:
+                return "000.19";
+            case 240:
+                return "000.19A";
+            case 250:
+                return "000.20";
 
-        // --- D: Quest Guide ------------------------------------------------
-        if (progress == 200 || progress == 210)
-        {
-            return "000.17";
-        }
-
-        if (progress == 220)
-        {
-            return "000.18";
-        }
-
-        if (progress == 230)
-        {
-            return state.isQuestListVisible() ? "000.20" : "000.19";
-        }
-
-        if (progress >= 240 && progress < 260)
-        {
-            return "000.20";
-        }
-
-        // --- E: Mining Instructor -----------------------------------------
-        if (progress >= 260 && progress < 370)
-        {
-            boolean pickaxe = state.hasInventoryItem("bronze pickaxe");
-            boolean tin = state.hasInventoryItem("tin ore");
-            boolean copper = state.hasInventoryItem("copper ore");
-            boolean bar = state.hasInventoryItem("bronze bar");
-            boolean hammer = state.hasInventoryItem("hammer");
-            boolean dagger = state.hasInventoryItem("bronze dagger");
-
-            if (!pickaxe)
-            {
+            // Mining Instructor
+            case 260:
                 return "000.21";
-            }
-
-            if (dagger)
-            {
-                return "000.27";
-            }
-
-            if (bar && hammer)
-            {
-                return "000.26";
-            }
-
-            if (bar)
-            {
-                return "000.25";
-            }
-
-            if (tin && copper)
-            {
-                return "000.24";
-            }
-
-            if (tin)
-            {
+            case 300:
+                return "000.22";
+            case 310:
                 return "000.23";
-            }
-
-            return "000.22";
-        }
-
-        // --- F: Combat Instructor -----------------------------------------
-        if (progress >= 370 && progress < 510)
-        {
-            boolean daggerEquipped = state.hasEquippedItem("bronze dagger");
-            boolean sword = state.hasInventoryItem("bronze sword") || state.hasEquippedItem("bronze sword");
-            boolean shield = state.hasInventoryItem("wooden shield") || state.hasEquippedItem("wooden shield");
-            boolean swordEquipped = state.hasEquippedItem("bronze sword");
-            boolean shieldEquipped = state.hasEquippedItem("wooden shield");
-            boolean bow = state.hasInventoryItem("shortbow") || state.hasEquippedItem("shortbow");
-            boolean arrows = state.hasInventoryItem("bronze arrow") || state.hasEquippedItem("bronze arrow");
-            boolean bowEquipped = state.hasEquippedItem("shortbow");
-            boolean arrowsEquipped = state.hasEquippedItem("bronze arrow");
-
-            if (!daggerEquipped && !sword && !shield)
-            {
+            case 320:
+                return "000.24";
+            case 330:
+                return "000.25";
+            case 340:
+                return "000.26";
+            case 350:
+                return "000.26A";
+            case 360:
+            case 370:
                 return "000.27";
-            }
 
-            if (!daggerEquipped && !sword)
-            {
+            // Combat Instructor
+            case 390:
                 return "000.28";
-            }
-
-            if (sword && shield && !swordEquipped && !shieldEquipped)
-            {
+            case 400:
+                return "000.28A";
+            case 405:
+                return "000.28B";
+            case 410:
+                return "000.29";
+            case 420:
                 return "000.30";
-            }
-
-            if (!bow)
-            {
-                if (swordEquipped && shieldEquipped && state.isCombatOptionsVisible())
+            case 430:
+                return "000.31";
+            case 440:
+                return "000.32";
+            case 450:
+            case 460:
+                return "000.33";
+            case 470:
+                return "000.34";
+            case 480:
+                // The game groups equipping the bow/arrows and starting the
+                // ranged attack in one tutorial state.
+                if (state.hasEquippedItem("shortbow") && state.hasEquippedItem("bronze arrow"))
                 {
-                    return "000.32";
+                    return "000.36";
                 }
-
-                // We cannot yet distinguish rat-pit entry vs first melee kill
-                // perfectly. Keep the persisted step rather than guess.
-                return null;
-            }
-
-            if (!bowEquipped || !arrowsEquipped)
-            {
                 return "000.35";
-            }
-
-            if (bow && arrows)
-            {
+            case 490:
                 return "000.36";
-            }
-        }
-
-        // --- G: Bank + Account Guide --------------------------------------
-        if (progress >= 510 && progress < 540)
-        {
-            if (progress == 510)
-            {
+            case 500:
                 return "000.37";
-            }
 
-            if (progress == 520)
-            {
+            // Bank / Account Guide
+            case 510:
                 return "000.38";
-            }
-
-            if (progress >= 530)
-            {
+            case 520:
                 return "000.39";
-            }
-        }
-
-        // --- H: Brother Brace ---------------------------------------------
-        if (progress >= 540 && progress < 610)
-        {
-            if (progress < 600)
-            {
+            case 530:
                 return "000.40";
-            }
+            case 531:
+                return "000.41";
+            case 532:
+                return "000.41A";
+            case 540:
+                return "000.42";
 
-            return "000.42";
+            // Brother Brace
+            case 550:
+                return "000.42";
+            case 560:
+                return "000.43";
+            case 570:
+                return "000.43A";
+            case 580:
+                return "000.43B";
+            case 600:
+                return "000.43C";
+            case 610:
+                return "000.44";
+
+            // Magic Instructor
+            case 620:
+                return "000.45";
+            case 630:
+                return "000.45A";
+            case 640:
+                return "000.45B";
+            case 650:
+                return "000.46";
+
+            // 670 means the Magic Instructor is ready to send the player off
+            // Tutorial Island. Ironman setup happens while this varp remains
+            // unchanged, so do not force-advance beyond the first Ironman step.
+            case 670:
+                return "000.47";
+
+            // 1000 = Tutorial Island completed.
+            case 1000:
+                return null;
+
+            default:
+                // Unknown or newly-added state: keep the persisted step instead
+                // of guessing and moving the player to the wrong instruction.
+                return null;
         }
-
-        // --- I/J/K: Magic, Ironman, leaving the island --------------------
-        // These states are deliberately left conservative until we add widget
-        // and account-mode detection. The persisted step remains the fallback.
-        if (progress >= 610 && progress < 1000)
-        {
-            return null;
-        }
-
-        return null;
     }
 }
