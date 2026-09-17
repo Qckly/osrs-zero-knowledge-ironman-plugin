@@ -90,32 +90,40 @@ public final class InventoryGuidanceOverlay extends WidgetItemOverlay
     {
         Set<String> targets = new LinkedHashSet<>();
 
-        String target = normalize(step.getTarget());
-        if (target.contains("inventory"))
-        {
-            addCandidate(target
-                .replace("in your inventory", "")
-                .replace("in inventory", "")
-                .trim(), targets);
-        }
+        // TARGET can itself describe one or several inventory items:
+        // "Logs in inventory"
+        // "Pot of flour / bucket of water"
+        // "Bronze sword + wooden shield"
+        addExpressionCandidates(step.getTarget(), targets);
 
-        String requirement = step.getRequirement();
-        if (requirement != null)
-        {
-            for (String part : requirement.split("\\+|\\n"))
-            {
-                String candidate = normalize(part)
-                    .replaceAll("^\\d+\\s*x?\\s*", "")
-                    .replace("in your inventory", "")
-                    .replace("in inventory", "")
-                    .replace("equipped", "")
-                    .trim();
-
-                addCandidate(candidate, targets);
-            }
-        }
+        // REQUIRED/EQUIPPED fields are also actionable inventory targets.
+        addExpressionCandidates(step.getRequirement(), targets);
 
         return targets;
+    }
+
+    private void addExpressionCandidates(String expression, Set<String> targets)
+    {
+        if (expression == null || expression.trim().isEmpty())
+        {
+            return;
+        }
+
+        // Split before normalization so separators such as "/" are not lost.
+        for (String rawPart : expression.split("(?i)\\s*(?:\\+|/|\\bor\\b|\\band\\b|\\n)\\s*"))
+        {
+            String candidate = normalize(rawPart)
+                .replaceAll("^\\d+\\s*x?\\s*", "")
+                .replace("in your inventory", "")
+                .replace("in inventory", "")
+                .replace("from inventory", "")
+                .replace("equipped", "")
+                .replace("available", "")
+                .replace("supplied", "")
+                .trim();
+
+            addCandidate(candidate, targets);
+        }
     }
 
     private void addCandidate(String candidate, Set<String> targets)
