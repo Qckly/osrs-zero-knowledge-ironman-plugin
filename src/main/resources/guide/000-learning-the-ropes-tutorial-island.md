@@ -138,7 +138,12 @@
 **TARGET:** Quest List icon  
 **DO:** Click the flashing Quest List icon.  
 **REMEMBER:** Red = not started, yellow = in progress, green = completed.  
-**COMPLETE WHEN:** The tutorial tells you to continue downstairs.
+**COMPLETE WHEN:** The tutorial tells you to speak to the Quest Guide again.
+
+### 000.19A — Talk to the Quest Guide again
+**TARGET:** Quest Guide  
+**DO:** Close the Quest List if needed, then talk to the Quest Guide again. Continue the dialogue until he directs you downstairs to learn Mining and Smithing.  
+**COMPLETE WHEN:** The tutorial tells you to climb down the ladder.
 
 ### 000.20 — Climb down the ladder
 **TARGET:** Ladder in the Quest Guide building  
@@ -175,10 +180,16 @@
 **DO:** Talk to him after making the bronze bar. Receive a **hammer** and the instruction to smith a dagger.  
 **COMPLETE WHEN:** Hammer is available.
 
-### 000.26 — Smith a bronze dagger
+### 000.26 — Open the anvil
 **TARGET:** Nearby anvil  
 **REQUIRED:** Hammer + bronze bar  
-**DO:** Click the anvil/use the bar on the anvil and select **Bronze dagger**.  
+**DO:** Left-click the anvil. This opens the Smithing interface.  
+**COMPLETE WHEN:** The Smithing interface is open and **Bronze dagger** is available to select.
+
+### 000.26A — Smith a bronze dagger
+**TARGET:** Bronze dagger in the Smithing interface  
+**REQUIRED:** Hammer + bronze bar  
+**DO:** Select **Bronze dagger** and wait for your character to smith it.  
 **COMPLETE WHEN:** Bronze dagger is in your inventory.
 
 ### OPTIONAL 000-B — Level 3 Mining and Smithing
@@ -194,10 +205,20 @@
 **DO:** Go east through the gate and talk to Vannaka.  
 **COMPLETE WHEN:** He asks you to equip the bronze dagger.
 
-### 000.28 — Open Worn Equipment and equip the dagger
-**TARGET:** Worn Equipment icon, then bronze dagger  
-**DO:** Open Worn Equipment as instructed, then click the bronze dagger in your inventory to equip it.  
-**COMPLETE WHEN:** Bronze dagger is equipped.
+### 000.28 — Open Worn Equipment
+**TARGET:** Worn Equipment icon  
+**DO:** Click the flashing Worn Equipment icon.  
+**COMPLETE WHEN:** The equipment tab is open and the tutorial asks you to view your equipment stats.
+
+### 000.28A — Open Equipment Stats
+**TARGET:** Equipment Stats button in the Worn Equipment tab  
+**DO:** Click **View equipment stats** / the equipment-stats button shown by the tutorial.  
+**COMPLETE WHEN:** The equipment-stats interface opens and the tutorial asks you to equip the bronze dagger.
+
+### 000.28B — Equip the bronze dagger
+**TARGET:** Bronze dagger  
+**DO:** Close the equipment-stats interface if necessary, then click the bronze dagger in your inventory to equip it.  
+**COMPLETE WHEN:** Bronze dagger is equipped and the tutorial tells you to speak to Vannaka again.
 
 ### 000.29 — Talk to Vannaka again
 **TARGET:** Vannaka  
@@ -271,8 +292,13 @@
 
 ### 000.41 — Open Account Management
 **TARGET:** Person/cog Account Management icon  
-**DO:** Click the flashing Account Management icon, then talk to the Account Guide again and continue the required prompts.  
-**COMPLETE WHEN:** The tutorial directs you to Brother Brace.
+**DO:** Click the flashing Account Management icon.  
+**COMPLETE WHEN:** The Account Management tab is open and the tutorial tells you to speak to the Account Guide again.
+
+### 000.41A — Talk to the Account Guide again
+**TARGET:** Account Guide  
+**DO:** Talk to the Account Guide again and continue the required dialogue.  
+**COMPLETE WHEN:** The tutorial tells you to leave his room and continue toward the chapel.
 
 ---
 
@@ -285,8 +311,23 @@
 
 ### 000.43 — Open the Prayer interface
 **TARGET:** Star-shaped Prayer icon  
-**DO:** Click the flashing Prayer icon. Then talk to Brother Brace again and continue the explanation of Prayer, Prayer points, altars and burying bones.  
-**COMPLETE WHEN:** The south exit becomes the next tutorial route.
+**DO:** Click the flashing Prayer icon.  
+**COMPLETE WHEN:** The Prayer interface is open and the tutorial tells you to speak to Brother Brace again.
+
+### 000.43A — Talk to Brother Brace again
+**TARGET:** Brother Brace  
+**DO:** Talk to Brother Brace again and continue his explanation of Prayer, Prayer points, altars and burying bones.  
+**COMPLETE WHEN:** The tutorial asks you to open your Friends List.
+
+### 000.43B — Open the Friends List
+**TARGET:** Friends List / social icon indicated by the tutorial  
+**DO:** Click the flashing Friends List icon.  
+**COMPLETE WHEN:** The Friends List opens and the tutorial tells you to speak to Brother Brace again.
+
+### 000.43C — Finish Brother Brace's tutorial
+**TARGET:** Brother Brace  
+**DO:** Talk to Brother Brace again and continue the dialogue until he sends you onward to the Magic Instructor.  
+**COMPLETE WHEN:** The tutorial tells you to leave the chapel.
 
 ---
 
@@ -299,8 +340,18 @@
 
 ### 000.45 — Talk to the Magic Instructor
 **TARGET:** Magic Instructor / Terrova  
-**DO:** Talk to him. When instructed, open the Magic interface using the spellbook icon. Talk to him again to receive air and mind runes.  
-**COMPLETE WHEN:** You have the supplied air + mind runes and can select Wind Strike.
+**DO:** Talk to him and continue the dialogue until he asks you to open the Magic interface.  
+**COMPLETE WHEN:** The tutorial asks you to open the spellbook.
+
+### 000.45A — Open the Magic interface
+**TARGET:** Spellbook / Magic icon  
+**DO:** Click the flashing Magic icon.  
+**COMPLETE WHEN:** The spellbook is open and the tutorial tells you to speak to the Magic Instructor again.
+
+### 000.45B — Talk to the Magic Instructor again
+**TARGET:** Magic Instructor / Terrova  
+**DO:** Talk to Terrova again. Continue until he gives you the runes required for Wind Strike.  
+**COMPLETE WHEN:** You have the supplied air + mind runes and the tutorial tells you to cast Wind Strike.
 
 ### 000.46 — Cast Wind Strike on a chicken
 **TARGET:** Chicken in the northern pen  
@@ -390,3 +441,27 @@ Extra Tutorial Island items you tried to hoard are not part of the mainland stat
 ## STOP HERE
 
 Do not start wandering around Lumbridge yet. **Step 001** will begin from this exact checkpoint and will explain the Lumbridge route from zero.
+
+---
+
+## Plugin implementation notes
+
+This file is deliberately structured like a long Quest Helper route:
+
+1. only one current step is active;
+2. every step has a target (NPC/object/interface/item/area);
+3. every mandatory step has an explicit completion condition;
+4. optional branches never block progression;
+5. the plugin can later highlight the current NPC/object/tile and auto-advance from account state.
+
+Quest Helper's public design uses exactly this general interaction philosophy: current step in the sidebar, requirements/step list, and map/minimap/object/NPC highlighting. We are applying that UX to the **entire Ironman account**, not only individual quests.
+
+Suggested machine fields:
+
+`id`, `section`, `title`, `routeType`, `targetType`, `targetName`, `instruction`, `requiredItems`, `completionCondition`, `warning`, `nextStep`, `optionalBranch`.
+
+---
+
+## Verification notes
+
+Audited against current 2026 **Learning the Ropes / Tutorial Island** walkthrough information, including the post-2025 trackable quest flow and February 2026 quest name. Ironman setup was cross-checked against Jagex guidance that Paul must be used at the end of Tutorial Island before leaving. The playable wording above is original rather than copied from the Wiki or Quest Helper.
