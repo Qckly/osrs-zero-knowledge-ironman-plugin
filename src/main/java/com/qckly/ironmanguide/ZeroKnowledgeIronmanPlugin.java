@@ -5,7 +5,10 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import javax.inject.Inject;
+import net.runelite.api.Client;
+import net.runelite.api.events.GameTick;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
@@ -20,6 +23,9 @@ import net.runelite.client.ui.overlay.OverlayManager;
 public class ZeroKnowledgeIronmanPlugin extends Plugin
 {
     @Inject
+    private Client client;
+
+    @Inject
     private ClientToolbar clientToolbar;
 
     @Inject
@@ -29,6 +35,7 @@ public class ZeroKnowledgeIronmanPlugin extends Plugin
     private ZeroKnowledgeIronmanConfig config;
 
     private GuideState guideState;
+    private TutorialStateTracker tutorialStateTracker;
     private ZeroKnowledgeIronmanPanel panel;
     private ZeroKnowledgeIronmanOverlay objectiveOverlay;
     private NavigationButton navigationButton;
@@ -43,7 +50,10 @@ public class ZeroKnowledgeIronmanPlugin extends Plugin
     protected void startUp()
     {
         guideState = new GuideState(GuideRepository.getSteps());
-        panel = new ZeroKnowledgeIronmanPanel(guideState);
+        tutorialStateTracker = new TutorialStateTracker(client);
+        tutorialStateTracker.refresh();
+
+        panel = new ZeroKnowledgeIronmanPanel(guideState, tutorialStateTracker);
         objectiveOverlay = new ZeroKnowledgeIronmanOverlay(guideState, config);
 
         navigationButton = NavigationButton.builder()
@@ -55,6 +65,15 @@ public class ZeroKnowledgeIronmanPlugin extends Plugin
 
         clientToolbar.addNavigation(navigationButton);
         overlayManager.add(objectiveOverlay);
+    }
+
+    @Subscribe
+    public void onGameTick(GameTick event)
+    {
+        if (tutorialStateTracker != null)
+        {
+            tutorialStateTracker.refresh();
+        }
     }
 
     @Override
@@ -73,6 +92,7 @@ public class ZeroKnowledgeIronmanPlugin extends Plugin
         navigationButton = null;
         objectiveOverlay = null;
         panel = null;
+        tutorialStateTracker = null;
         guideState = null;
     }
 
