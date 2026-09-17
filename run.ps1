@@ -9,19 +9,46 @@ $zipPath = Join-Path $toolsDir "gradle-$gradleVersion-bin.zip"
 
 Write-Host 'Zero Knowledge Ironman Guide - RuneLite dev launcher' -ForegroundColor Cyan
 
-function Get-JavaMajorVersion([string]$javaExe) {
-    try {
-        $lines = & $javaExe -version 2>&1
-        $text = ($lines | Out-String)
-        if ($text -match 'version\s+"1\.(\d+)') {
-            return [int]$Matches[1]
+function Get-JdkMajorVersion([string]$jdkHomePath) {
+    if (-not $jdkHomePath -or -not (Test-Path $jdkHomePath)) {
+        return 0
+    }
+
+    # Prefer the JDK release file because it avoids PowerShell 5.1 stderr quirks
+    # from java -version / javac -version.
+    $releaseFile = Join-Path $jdkHomePath 'release'
+    if (Test-Path $releaseFile) {
+        try {
+            $releaseText = Get-Content -Path $releaseFile -Raw
+            if ($releaseText -match 'JAVA_VERSION="1\.(\d+)') {
+                return [int]$Matches[1]
+            }
+            if ($releaseText -match 'JAVA_VERSION="(\d+)') {
+                return [int]$Matches[1]
+            }
         }
-        if ($text -match 'version\s+"(\d+)') {
-            return [int]$Matches[1]
+        catch {
         }
     }
-    catch {
+
+    # Fallback: ask javac through cmd.exe so stderr handling cannot confuse
+    # Windows PowerShell's ErrorActionPreference.
+    $javac = Join-Path $jdkHomePath 'bin\javac.exe'
+    if (Test-Path $javac) {
+        try {
+            $output = cmd.exe /d /c "`"$javac`" -version 2^>^&1"
+            $text = ($output | Out-String)
+            if ($text -match 'javac\s+1\.(\d+)') {
+                return [int]$Matches[1]
+            }
+            if ($text -match 'javac\s+(\d+)') {
+                return [int]$Matches[1]
+            }
+        }
+        catch {
+        }
     }
+
     return 0
 }
 
@@ -32,15 +59,20 @@ function Test-JdkHome([string]$jdkHomePath) {
 
     $java = Join-Path $jdkHomePath 'bin\java.exe'
     $javac = Join-Path $jdkHomePath 'bin\javac.exe'
-    if ((Test-Path $java) -and (Test-Path $javac) -and ((Get-JavaMajorVersion $java) -ge 11)) {
-        return $java
+    $major = Get-JdkMajorVersion $jdkHomePath
+
+    if ((Test-Path $java) -and (Test-Path $javac) -and ($major -ge 11)) {
+        return [PSCustomObject]@{
+            Home = $jdkHomePath
+            Java = $java
+            Version = $major
+        }
     }
 
     return $null
 }
 
-$javaExe = $null
-$javaHome = $null
+$selectedJdk = $null
 $candidateHomes = New-Object System.Collections.Generic.List[string]
 
 # 1) Existing JAVA_HOME.
@@ -62,7 +94,7 @@ foreach ($pattern in $registryPatterns) {
         foreach ($key in Get-ItemProperty -Path $pattern -ErrorAction SilentlyContinue) {
             foreach ($propertyName in @('Path', 'JavaHome', 'InstallationPath')) {
                 $value = $key.$propertyName
-                if ($value) {
+                if ($value -and ($value -is [string])) {
                     $candidateHomes.Add([string]$value)
                 }
             }
@@ -107,54 +139,48 @@ foreach ($root in $roots | Select-Object -Unique) {
     }
 }
 
-# 4) Try all discovered JDK homes, preferring the highest Java version.
+# 4) Validate all discovered JDK homes, preferring the highest version.
 $validJdks = @()
-foreach ($jdkCandidateHome in $candidateHomes | Where-Object { $_ } | Select-Object -Unique) {
-    $candidate = Test-JdkHome $jdkCandidateHome
+foreach ($jdkCandidateHome in $candidateHomes | Where-Object { $_ -and ($_ -is [string]) } | Select-Object -Unique) {
+    $candidate = Test-JdkHome ([string]$jdkCandidateHome)
     if ($candidate) {
-        $validJdks += [PSCustomObject]@{
-            Home = $jdkCandidateHome
-            Java = $candidate
-            Version = Get-JavaMajorVersion $candidate
-        }
+        $validJdks += $candidate
     }
 }
 
 if ($validJdks.Count -gt 0) {
-    $selected = $validJdks | Sort-Object Version -Descending | Select-Object -First 1
-    $javaExe = $selected.Java
-    $javaHome = $selected.Home
+    $selectedJdk = $validJdks | Sort-Object Version -Descending | Select-Object -First 1
 }
 
-# 5) Last fallback: java/javac currently on PATH.
-if (-not $javaExe) {
-    $javaCommand = Get-Command java.exe -ErrorAction SilentlyContinue
+# 5) Last fallback: derive a JDK home from javac.exe currently on PATH.
+if (-not $selectedJdk) {
     $javacCommand = Get-Command javac.exe -ErrorAction SilentlyContinue
-    if ($javaCommand -and $javacCommand -and ((Get-JavaMajorVersion $javaCommand.Source) -ge 11)) {
-        $javaExe = $javaCommand.Source
-        $javaHome = Split-Path -Parent (Split-Path -Parent $javaExe)
+    if ($javacCommand) {
+        $pathHome = Split-Path -Parent (Split-Path -Parent $javacCommand.Source)
+        $selectedJdk = Test-JdkHome $pathHome
     }
 }
 
-if (-not $javaExe) {
+if (-not $selectedJdk) {
     Write-Host ''
     Write-Host 'Java 11 or newer JDK was not found.' -ForegroundColor Red
     Write-Host 'Installed JDK locations checked:' -ForegroundColor Yellow
-    foreach ($jdkCandidateHome in $candidateHomes | Where-Object { $_ } | Select-Object -Unique) {
-        Write-Host "  $jdkCandidateHome" -ForegroundColor DarkGray
+    foreach ($jdkCandidateHome in $candidateHomes | Where-Object { $_ -and ($_ -is [string]) } | Select-Object -Unique) {
+        $major = Get-JdkMajorVersion ([string]$jdkCandidateHome)
+        Write-Host "  $jdkCandidateHome  (detected major: $major)" -ForegroundColor DarkGray
     }
     Write-Host ''
     Write-Host 'Diagnostic command:' -ForegroundColor Yellow
-    Write-Host '  Get-ChildItem "C:\Program Files" -Filter javac.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName' -ForegroundColor Gray
+    Write-Host '  Get-Content "C:\Program Files\Eclipse Adoptium\jdk-11.0.32.101-hotspot\release" | Select-String JAVA_VERSION' -ForegroundColor Gray
     exit 1
 }
 
-$env:JAVA_HOME = $javaHome
+$env:JAVA_HOME = $selectedJdk.Home
 $env:Path = (Join-Path $env:JAVA_HOME 'bin') + ';' + $env:Path
+$javaExe = $selectedJdk.Java
 
-$javaVersion = & $javaExe -version 2>&1
 Write-Host 'Java selected:' -ForegroundColor Green
-$javaVersion | Select-Object -First 1 | ForEach-Object { Write-Host "  $_" }
+Write-Host "  JDK $($selectedJdk.Version)" -ForegroundColor Green
 Write-Host "JAVA_HOME: $env:JAVA_HOME" -ForegroundColor DarkGray
 
 if (-not (Test-Path $gradleExe)) {
