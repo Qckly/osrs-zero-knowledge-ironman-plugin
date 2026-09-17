@@ -18,9 +18,21 @@ public interface ZeroKnowledgeIronmanConfig extends Config
     }
 
     @ConfigItem(
+        keyName = "showObjectiveOverlay",
+        name = "Objective overlay",
+        description = "Show the current guide objective in the game view",
+        position = 1
+    )
+    default boolean showObjectiveOverlay()
+    {
+        return true;
+    }
+
+    @ConfigItem(
         keyName = "showWorldGuidance",
         name = "World guidance",
-        description = "Show supported NPC, object and tile guidance overlays"
+        description = "Show supported NPC, object and tile guidance overlays",
+        position = 2
     )
     default boolean showWorldGuidance()
     {
