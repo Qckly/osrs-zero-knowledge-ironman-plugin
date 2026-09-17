@@ -45,6 +45,7 @@ public final class GuideRepository
                 null,
                 null,
                 null,
+                Collections.emptyList(),
                 false
             ));
         }
@@ -87,6 +88,10 @@ public final class GuideRepository
                 if (trimmed.startsWith("**TARGET:**"))
                 {
                     current.target = fieldValue(trimmed, "**TARGET:**");
+                }
+                else if (trimmed.startsWith("**WAYPOINT:**"))
+                {
+                    current.addWaypoint(fieldValue(trimmed, "**WAYPOINT:**"));
                 }
                 else if (trimmed.startsWith("**REQUIRED:**"))
                 {
@@ -201,6 +206,7 @@ public final class GuideRepository
         private String requirement;
         private String recommendedItems;
         private String completeWhen;
+        private final List<GuideWaypoint> waypoints = new ArrayList<>();
         private boolean optional;
 
         private StepBuilder(String id, String section, String title, boolean optional)
@@ -231,6 +237,32 @@ public final class GuideRepository
             }
 
             return new StepBuilder(id, section, cleanMarkdown(title), optional);
+        }
+
+        private void addWaypoint(String value)
+        {
+            if (value == null || value.trim().isEmpty())
+            {
+                return;
+            }
+
+            String[] parts = value.split(",");
+            if (parts.length < 2 || parts.length > 3)
+            {
+                return;
+            }
+
+            try
+            {
+                int x = Integer.parseInt(parts[0].trim());
+                int y = Integer.parseInt(parts[1].trim());
+                int plane = parts.length == 3 ? Integer.parseInt(parts[2].trim()) : 0;
+                waypoints.add(new GuideWaypoint(x, y, plane));
+            }
+            catch (NumberFormatException ignored)
+            {
+                // Invalid waypoint lines are ignored rather than breaking the whole guide.
+            }
         }
 
         private void addRequirement(String value)
@@ -286,6 +318,7 @@ public final class GuideRepository
                 requirement,
                 recommendedItems,
                 finalCompleteWhen,
+                new ArrayList<>(waypoints),
                 optional
             );
         }
