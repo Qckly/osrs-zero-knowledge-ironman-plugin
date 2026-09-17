@@ -1,7 +1,7 @@
+package com.qckly.ironmanguide;
+
 import java.util.Collections;
 import java.util.List;
-
-package com.qckly.ironmanguide;
 
 public final class GuideStep
 {
