@@ -50,7 +50,7 @@ public class ZeroKnowledgeIronmanPlugin extends Plugin
     private InventoryGuidanceOverlay inventoryGuidanceOverlay;
     private DialogueGuidanceOverlay dialogueGuidanceOverlay;
     private InterfaceGuidanceOverlay interfaceGuidanceOverlay;
-    private DirectionalGuidanceOverlay directionalGuidanceOverlay;
+    private PathGuidanceOverlay pathGuidanceOverlay;
     private NavigationButton navigationButton;
 
     @Provides
@@ -117,7 +117,7 @@ public class ZeroKnowledgeIronmanPlugin extends Plugin
             tutorialStateTracker
         );
 
-        directionalGuidanceOverlay = new DirectionalGuidanceOverlay(
+        pathGuidanceOverlay = new PathGuidanceOverlay(
             client,
             guideState,
             config,
@@ -137,7 +137,7 @@ public class ZeroKnowledgeIronmanPlugin extends Plugin
         overlayManager.add(inventoryGuidanceOverlay);
         overlayManager.add(dialogueGuidanceOverlay);
         overlayManager.add(interfaceGuidanceOverlay);
-        overlayManager.add(directionalGuidanceOverlay);
+        overlayManager.add(pathGuidanceOverlay);
     }
 
     @Subscribe
@@ -210,9 +210,9 @@ public class ZeroKnowledgeIronmanPlugin extends Plugin
     @Override
     protected void shutDown()
     {
-        if (directionalGuidanceOverlay != null)
+        if (pathGuidanceOverlay != null)
         {
-            overlayManager.remove(directionalGuidanceOverlay);
+            overlayManager.remove(pathGuidanceOverlay);
         }
 
         if (interfaceGuidanceOverlay != null)
@@ -246,7 +246,7 @@ public class ZeroKnowledgeIronmanPlugin extends Plugin
         }
 
         navigationButton = null;
-        directionalGuidanceOverlay = null;
+        pathGuidanceOverlay = null;
         interfaceGuidanceOverlay = null;
         dialogueGuidanceOverlay = null;
         inventoryGuidanceOverlay = null;
