@@ -14,12 +14,14 @@ public final class GuideStep
     private final String requirement;
     private final String recommendedItems;
     private final String completeWhen;
+    private final String uiTarget;
+    private final String dialogueChoice;
     private final List<GuideWaypoint> waypoints;
     private final boolean optional;
 
     public GuideStep(String id, String chapter, String title, String instruction, String why)
     {
-        this(id, chapter, title, instruction, why, null, null, null, null, Collections.emptyList(), false);
+        this(id, chapter, title, instruction, why, null, null, null, null, null, null, Collections.emptyList(), false);
     }
 
     public GuideStep(
@@ -32,6 +34,8 @@ public final class GuideStep
         String requirement,
         String recommendedItems,
         String completeWhen,
+        String uiTarget,
+        String dialogueChoice,
         List<GuideWaypoint> waypoints,
         boolean optional)
     {
@@ -44,6 +48,8 @@ public final class GuideStep
         this.requirement = requirement;
         this.recommendedItems = recommendedItems;
         this.completeWhen = completeWhen;
+        this.uiTarget = uiTarget;
+        this.dialogueChoice = dialogueChoice;
         this.waypoints = waypoints == null ? Collections.emptyList() : Collections.unmodifiableList(waypoints);
         this.optional = optional;
     }
@@ -91,6 +97,16 @@ public final class GuideStep
     public String getCompleteWhen()
     {
         return completeWhen;
+    }
+
+    public String getUiTarget()
+    {
+        return uiTarget;
+    }
+
+    public String getDialogueChoice()
+    {
+        return dialogueChoice;
     }
 
     public List<GuideWaypoint> getWaypoints()
