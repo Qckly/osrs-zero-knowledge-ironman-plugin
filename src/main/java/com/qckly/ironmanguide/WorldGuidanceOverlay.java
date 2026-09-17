@@ -4,15 +4,18 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
+import java.awt.Polygon;
 import java.awt.Shape;
 import java.util.Locale;
 import net.runelite.api.Client;
 import net.runelite.api.GameObject;
 import net.runelite.api.NPC;
 import net.runelite.api.ObjectComposition;
+import net.runelite.api.Perspective;
 import net.runelite.api.Player;
 import net.runelite.api.Tile;
 import net.runelite.api.TileObject;
+import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
@@ -90,21 +93,25 @@ public final class WorldGuidanceOverlay extends Overlay
             return null;
         }
 
-        Integer exactObjectId = TutorialExactTargetResolver.resolveObjectId(step, tutorialStateTracker);
-        String anchorNpcName = TutorialExactTargetResolver.resolveAnchorNpcName(step, tutorialStateTracker);
+        GuidanceTarget primary = findGameHintTarget(playerPoint);
 
-        GuidanceTarget primary;
-        if (exactObjectId != null)
+        if (primary == null)
         {
-            primary = findExactObjectTarget(exactObjectId, playerPoint);
-        }
-        else if (anchorNpcName != null)
-        {
-            primary = findEntrywayNearNpc(anchorNpcName, playerPoint);
-        }
-        else
-        {
-            primary = findPrimaryTarget(target, playerPoint);
+            Integer exactObjectId = TutorialExactTargetResolver.resolveObjectId(step, tutorialStateTracker);
+            String anchorNpcName = TutorialExactTargetResolver.resolveAnchorNpcName(step, tutorialStateTracker);
+
+            if (exactObjectId != null)
+            {
+                primary = findExactObjectTarget(exactObjectId, playerPoint);
+            }
+            else if (anchorNpcName != null)
+            {
+                primary = findEntrywayNearNpc(anchorNpcName, playerPoint);
+            }
+            else
+            {
+                primary = findPrimaryTarget(target, playerPoint);
+            }
         }
         if (primary == null)
         {
@@ -131,11 +138,203 @@ public final class WorldGuidanceOverlay extends Overlay
                 );
             }
         }
+        else if (primary.point != null)
+        {
+            LocalPoint localPoint = LocalPoint.fromWorld(client, primary.point);
+            if (localPoint != null)
+            {
+                Polygon tilePoly = Perspective.getCanvasTilePoly(client, localPoint);
+                if (tilePoly != null)
+                {
+                    OverlayUtil.renderPolygon(
+                        graphics,
+                        tilePoly,
+                        CYAN,
+                        CYAN_FILL,
+                        new BasicStroke(2f)
+                    );
+                }
+            }
+        }
 
         return null;
     }
 
+    private GuidanceTarget findGameHintTarget(WorldPoint playerPoint)
+    {
+        NPC hintNpc = client.getHintArrowNpc();
+        if (hintNpc != null)
+        {
+            WorldPoint npcPoint = hintNpc.getWorldLocation();
+            if (isCandidateOnPlayerPlane(playerPoint, npcPoint))
+            {
+                return new GuidanceTarget(hintNpc, null, null, distance(playerPoint, npcPoint));
+            }
+        }
 
+        WorldPoint hintPoint = client.getHintArrowPoint();
+        if (!isCandidateOnPlayerPlane(playerPoint, hintPoint))
+        {
+            return null;
+        }
+
+        GuidanceTarget objectTarget = findInteractiveObjectNearHint(hintPoint, playerPoint);
+        if (objectTarget != null)
+        {
+            return objectTarget;
+        }
+
+        return new GuidanceTarget(null, null, hintPoint, distance(playerPoint, hintPoint));
+    }
+
+    private GuidanceTarget findInteractiveObjectNearHint(WorldPoint hintPoint, WorldPoint playerPoint)
+    {
+        GuidanceTarget best = null;
+        int bestScore = Integer.MAX_VALUE;
+
+        Tile[][][] sceneTiles = client.getScene().getTiles();
+        int plane = client.getPlane();
+
+        if (sceneTiles == null || plane < 0 || plane >= sceneTiles.length)
+        {
+            return null;
+        }
+
+        for (Tile[] row : sceneTiles[plane])
+        {
+            if (row == null)
+            {
+                continue;
+            }
+
+            for (Tile tile : row)
+            {
+                if (tile == null)
+                {
+                    continue;
+                }
+
+                TileObject[] simpleObjects = {
+                    tile.getWallObject(),
+                    tile.getDecorativeObject(),
+                    tile.getGroundObject()
+                };
+
+                for (TileObject object : simpleObjects)
+                {
+                    GuidanceTarget candidate = hintObjectCandidate(object, hintPoint, playerPoint);
+                    if (candidate != null)
+                    {
+                        int score = hintObjectScore(object, hintPoint, playerPoint);
+                        if (score < bestScore)
+                        {
+                            bestScore = score;
+                            best = candidate;
+                        }
+                    }
+                }
+
+                GameObject[] gameObjects = tile.getGameObjects();
+                if (gameObjects != null)
+                {
+                    for (GameObject object : gameObjects)
+                    {
+                        GuidanceTarget candidate = hintObjectCandidate(object, hintPoint, playerPoint);
+                        if (candidate != null)
+                        {
+                            int score = hintObjectScore(object, hintPoint, playerPoint);
+                            if (score < bestScore)
+                            {
+                                bestScore = score;
+                                best = candidate;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return best;
+    }
+
+    private GuidanceTarget hintObjectCandidate(
+        TileObject object,
+        WorldPoint hintPoint,
+        WorldPoint playerPoint)
+    {
+        if (object == null)
+        {
+            return null;
+        }
+
+        WorldPoint point = object.getWorldLocation();
+        if (!isCandidateOnPlayerPlane(playerPoint, point) || distance(hintPoint, point) > 2)
+        {
+            return null;
+        }
+
+        ObjectComposition composition = resolvedObjectComposition(object);
+        if (composition == null || !hasUsefulAction(composition))
+        {
+            return null;
+        }
+
+        return new GuidanceTarget(null, object, null, distance(playerPoint, point));
+    }
+
+    private int hintObjectScore(TileObject object, WorldPoint hintPoint, WorldPoint playerPoint)
+    {
+        WorldPoint point = object.getWorldLocation();
+        int hintDistance = distance(hintPoint, point);
+        int playerDistance = distance(playerPoint, point);
+
+        String name = normalize(objectName(object));
+        int typeBonus =
+            "door".equals(name) || "gate".equals(name) || name.contains("ladder") || name.contains("stair")
+                ? -50
+                : 0;
+
+        return hintDistance * 100 + playerDistance + typeBonus;
+    }
+
+    private ObjectComposition resolvedObjectComposition(TileObject object)
+    {
+        ObjectComposition composition = client.getObjectDefinition(object.getId());
+        if (composition == null)
+        {
+            return null;
+        }
+
+        if (composition.getImpostorIds() != null)
+        {
+            ObjectComposition impostor = composition.getImpostor();
+            if (impostor != null)
+            {
+                composition = impostor;
+            }
+        }
+
+        return composition;
+    }
+
+    private static boolean hasUsefulAction(ObjectComposition composition)
+    {
+        String[] actions = composition.getActions();
+        if (actions == null)
+        {
+            return false;
+        }
+
+        for (String action : actions)
+        {
+            if (action != null && !action.trim().isEmpty())
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     private GuidanceTarget findEntrywayNearNpc(String anchorNpcName, WorldPoint playerPoint)
     {
@@ -260,7 +459,7 @@ public final class WorldGuidanceOverlay extends Overlay
             return null;
         }
 
-        return new GuidanceTarget(null, object, distance(playerPoint, point));
+        return new GuidanceTarget(null, object, null, distance(playerPoint, point));
     }
 
     private GuidanceTarget findExactObjectTarget(int objectId, WorldPoint playerPoint)
@@ -326,7 +525,7 @@ public final class WorldGuidanceOverlay extends Overlay
 
         return nearer(
             current,
-            new GuidanceTarget(null, object, distance(playerPoint, point))
+            new GuidanceTarget(null, object, null, distance(playerPoint, point))
         );
     }
 
@@ -347,7 +546,7 @@ public final class WorldGuidanceOverlay extends Overlay
                 continue;
             }
 
-            best = nearer(best, new GuidanceTarget(npc, null, distance(playerPoint, point)));
+            best = nearer(best, new GuidanceTarget(npc, null, null, distance(playerPoint, point)));
         }
 
         Tile[][][] sceneTiles = client.getScene().getTiles();
@@ -409,7 +608,7 @@ public final class WorldGuidanceOverlay extends Overlay
 
         return nearer(
             current,
-            new GuidanceTarget(null, object, distance(playerPoint, point))
+            new GuidanceTarget(null, object, null, distance(playerPoint, point))
         );
     }
 
@@ -447,22 +646,8 @@ public final class WorldGuidanceOverlay extends Overlay
 
     private String objectName(TileObject object)
     {
-        ObjectComposition composition = client.getObjectDefinition(object.getId());
-        if (composition == null)
-        {
-            return null;
-        }
-
-        if (composition.getImpostorIds() != null)
-        {
-            ObjectComposition impostor = composition.getImpostor();
-            if (impostor != null)
-            {
-                composition = impostor;
-            }
-        }
-
-        return composition.getName();
+        ObjectComposition composition = resolvedObjectComposition(object);
+        return composition == null ? null : composition.getName();
     }
 
     private static boolean matchesTarget(String normalizedTarget, String candidateName)
@@ -502,12 +687,14 @@ public final class WorldGuidanceOverlay extends Overlay
     {
         private final NPC npc;
         private final TileObject object;
+        private final WorldPoint point;
         private final int distance;
 
-        private GuidanceTarget(NPC npc, TileObject object, int distance)
+        private GuidanceTarget(NPC npc, TileObject object, WorldPoint point, int distance)
         {
             this.npc = npc;
             this.object = object;
+            this.point = point;
             this.distance = distance;
         }
     }
