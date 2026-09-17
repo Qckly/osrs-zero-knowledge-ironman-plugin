@@ -75,7 +75,7 @@ public final class ZeroKnowledgeIronmanPanel extends PluginPanel
 
         if (hasText(step.getRequirement()))
         {
-            add(buildSingleValueBlock("Requirements:", step.getRequirement(), RED, Font.BOLD));
+            add(buildRequirementsBlock(step.getRequirement()));
         }
 
         if (hasText(step.getCompleteWhen()))
@@ -174,6 +174,39 @@ public final class ZeroKnowledgeIronmanPanel extends PluginPanel
         panel.add(label("Route State", Color.LIGHT_GRAY, Font.PLAIN, 13f));
         panel.add(valueStrip("Standard Ironman"));
         panel.add(valueStrip((step.isOptional() ? "Optional: " : "Active: ") + sectionName(step.getChapter())));
+        return panel;
+    }
+
+    private JPanel buildRequirementsBlock(String requirement)
+    {
+        JPanel panel = questHelperBlock();
+        panel.setLayout(new DynamicGridLayout(0, 1, 0, 5));
+        panel.add(label("Requirements:", Color.LIGHT_GRAY, Font.PLAIN, 13f));
+
+        String[] parts = requirement.split("\\+|\\n");
+        for (String rawPart : parts)
+        {
+            String part = rawPart.trim();
+            if (part.isEmpty())
+            {
+                continue;
+            }
+
+            RequirementEvaluator.Status status =
+                RequirementEvaluator.evaluate(part, tutorialStateTracker);
+
+            Color color = status == RequirementEvaluator.Status.SATISFIED
+                ? GREEN
+                : status == RequirementEvaluator.Status.UNSATISFIED
+                    ? RED
+                    : Color.LIGHT_GRAY;
+
+            String prefix = status == RequirementEvaluator.Status.SATISFIED ? "✓ " : "";
+            JPanel strip = valueStripPanel();
+            strip.add(textArea(prefix + part, color, Font.BOLD, 13.5f), BorderLayout.CENTER);
+            panel.add(strip);
+        }
+
         return panel;
     }
 
