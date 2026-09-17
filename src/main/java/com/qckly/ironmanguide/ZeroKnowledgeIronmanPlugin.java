@@ -54,7 +54,11 @@ public class ZeroKnowledgeIronmanPlugin extends Plugin
         tutorialStateTracker.refresh();
 
         panel = new ZeroKnowledgeIronmanPanel(guideState, tutorialStateTracker);
-        objectiveOverlay = new ZeroKnowledgeIronmanOverlay(guideState, config);
+        objectiveOverlay = new ZeroKnowledgeIronmanOverlay(
+            guideState,
+            config,
+            tutorialStateTracker
+        );
 
         navigationButton = NavigationButton.builder()
             .tooltip("Zero Knowledge Ironman Guide")
