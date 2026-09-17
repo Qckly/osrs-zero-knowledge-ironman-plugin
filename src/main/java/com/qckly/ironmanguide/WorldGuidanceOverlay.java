@@ -90,7 +90,10 @@ public final class WorldGuidanceOverlay extends Overlay
             return null;
         }
 
-        GuidanceTarget primary = findPrimaryTarget(target, playerPoint);
+        Integer exactObjectId = TutorialExactTargetResolver.resolveObjectId(step, tutorialStateTracker);
+        GuidanceTarget primary = exactObjectId != null
+            ? findExactObjectTarget(exactObjectId, playerPoint)
+            : findPrimaryTarget(target, playerPoint);
         if (primary == null)
         {
             return null;
@@ -118,6 +121,74 @@ public final class WorldGuidanceOverlay extends Overlay
         }
 
         return null;
+    }
+
+
+    private GuidanceTarget findExactObjectTarget(int objectId, WorldPoint playerPoint)
+    {
+        GuidanceTarget best = null;
+
+        Tile[][][] sceneTiles = client.getScene().getTiles();
+        int plane = client.getPlane();
+
+        if (sceneTiles == null || plane < 0 || plane >= sceneTiles.length)
+        {
+            return null;
+        }
+
+        for (Tile[] row : sceneTiles[plane])
+        {
+            if (row == null)
+            {
+                continue;
+            }
+
+            for (Tile tile : row)
+            {
+                if (tile == null)
+                {
+                    continue;
+                }
+
+                best = considerExactObject(best, objectId, playerPoint, tile.getWallObject());
+                best = considerExactObject(best, objectId, playerPoint, tile.getDecorativeObject());
+                best = considerExactObject(best, objectId, playerPoint, tile.getGroundObject());
+
+                GameObject[] gameObjects = tile.getGameObjects();
+                if (gameObjects != null)
+                {
+                    for (GameObject gameObject : gameObjects)
+                    {
+                        best = considerExactObject(best, objectId, playerPoint, gameObject);
+                    }
+                }
+            }
+        }
+
+        return best;
+    }
+
+    private GuidanceTarget considerExactObject(
+        GuidanceTarget current,
+        int objectId,
+        WorldPoint playerPoint,
+        TileObject object)
+    {
+        if (object == null || object.getId() != objectId)
+        {
+            return current;
+        }
+
+        WorldPoint point = object.getWorldLocation();
+        if (!isCandidateOnPlayerPlane(playerPoint, point))
+        {
+            return current;
+        }
+
+        return nearer(
+            current,
+            new GuidanceTarget(null, object, distance(playerPoint, point))
+        );
     }
 
     private GuidanceTarget findPrimaryTarget(String target, WorldPoint playerPoint)
