@@ -36,17 +36,20 @@ public final class WorldGuidanceOverlay extends Overlay
     private final GuideState guideState;
     private final ZeroKnowledgeIronmanConfig config;
     private final ModelOutlineRenderer modelOutlineRenderer;
+    private final TutorialStateTracker tutorialStateTracker;
 
     public WorldGuidanceOverlay(
         Client client,
         GuideState guideState,
         ZeroKnowledgeIronmanConfig config,
-        ModelOutlineRenderer modelOutlineRenderer)
+        ModelOutlineRenderer modelOutlineRenderer,
+        TutorialStateTracker tutorialStateTracker)
     {
         this.client = client;
         this.guideState = guideState;
         this.config = config;
         this.modelOutlineRenderer = modelOutlineRenderer;
+        this.tutorialStateTracker = tutorialStateTracker;
 
         setPosition(OverlayPosition.DYNAMIC);
         setLayer(OverlayLayer.ABOVE_SCENE);
@@ -56,7 +59,10 @@ public final class WorldGuidanceOverlay extends Overlay
     @Override
     public Dimension render(Graphics2D graphics)
     {
-        if (!config.showWorldGuidance())
+        boolean forceVisibleForTutorialQa =
+            tutorialStateTracker != null && tutorialStateTracker.isOnTutorialIsland();
+
+        if (!forceVisibleForTutorialQa && !config.showWorldGuidance())
         {
             return null;
         }
