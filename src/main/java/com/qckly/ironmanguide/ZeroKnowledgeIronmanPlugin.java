@@ -123,10 +123,39 @@ public class ZeroKnowledgeIronmanPlugin extends Plugin
         }
 
         String detectedStepId = TutorialStepResolver.resolve(tutorialStateTracker);
-        if (detectedStepId != null)
+        if (detectedStepId == null)
         {
-            guideState.setCurrentStepId(detectedStepId);
+            return;
         }
+
+        GuideStep currentStep = guideState.getCurrentStep();
+
+        // Tutorial progress 670 remains unchanged while the player handles the
+        // Ironman tutor and prepares to leave the island. Once the player has
+        // manually advanced into that exit sequence, do not snap them back to
+        // 000.47 every game tick.
+        if ("000.47".equals(detectedStepId) && currentStep != null && isTutorialExitSequence(currentStep.getId()))
+        {
+            return;
+        }
+
+        guideState.setCurrentStepId(detectedStepId);
+    }
+
+
+    private static boolean isTutorialExitSequence(String stepId)
+    {
+        if (stepId == null)
+        {
+            return false;
+        }
+
+        return "000.47".equals(stepId)
+            || "000.48".equals(stepId)
+            || "000.49".equals(stepId)
+            || "000.50".equals(stepId)
+            || "000.51".equals(stepId)
+            || "000.52".equals(stepId);
     }
 
     private void persistCurrentStep()
