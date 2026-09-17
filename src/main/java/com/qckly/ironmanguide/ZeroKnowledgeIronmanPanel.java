@@ -4,6 +4,7 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.GridLayout;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -19,7 +20,8 @@ import net.runelite.client.ui.PluginPanel;
 
 public final class ZeroKnowledgeIronmanPanel extends PluginPanel
 {
-    private static final int TEXT_WIDTH = 176;
+    private static final int CONTENT_WIDTH = 196;
+    private static final int TEXT_WIDTH = 166;
     private static final Color ACCENT = new Color(255, 165, 0);
 
     private final GuideState guideState;
@@ -45,13 +47,13 @@ public final class ZeroKnowledgeIronmanPanel extends PluginPanel
         JPanel content = new JPanel();
         content.setOpaque(false);
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
-        content.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        content.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
 
-        content.add(buildHeader());
+        content.add(centered(buildHeader()));
         content.add(Box.createVerticalStrut(8));
-        content.add(buildCurrentStepCard());
+        content.add(centered(buildCurrentStepCard()));
         content.add(Box.createVerticalStrut(8));
-        content.add(buildWhyCard());
+        content.add(centered(buildWhyCard()));
         content.add(Box.createVerticalStrut(8));
 
         JScrollPane scrollPane = new JScrollPane(content);
@@ -74,28 +76,31 @@ public final class ZeroKnowledgeIronmanPanel extends PluginPanel
 
     private JPanel buildHeader()
     {
-        JPanel header = new JPanel();
-        header.setOpaque(false);
+        JPanel header = fixedWidthPanel();
         header.setLayout(new BoxLayout(header, BoxLayout.Y_AXIS));
-        header.setAlignmentX(LEFT_ALIGNMENT);
+        header.setOpaque(false);
 
-        JLabel pluginTitle = new JLabel("IRONMAN GUIDE");
+        JLabel pluginTitle = new JLabel("IRONMAN GUIDE", SwingConstants.CENTER);
         pluginTitle.setForeground(Color.WHITE);
         pluginTitle.setFont(pluginTitle.getFont().deriveFont(Font.BOLD, 13f));
         pluginTitle.setAlignmentX(CENTER_ALIGNMENT);
+        pluginTitle.setMaximumSize(new Dimension(CONTENT_WIDTH, pluginTitle.getPreferredSize().height));
 
         chapterLabel.setForeground(Color.LIGHT_GRAY);
-        chapterLabel.setAlignmentX(CENTER_ALIGNMENT);
         chapterLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        chapterLabel.setAlignmentX(CENTER_ALIGNMENT);
+        chapterLabel.setMaximumSize(new Dimension(CONTENT_WIDTH, 40));
 
         progressLabel.setForeground(Color.GRAY);
-        progressLabel.setAlignmentX(CENTER_ALIGNMENT);
         progressLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        progressLabel.setAlignmentX(CENTER_ALIGNMENT);
+        progressLabel.setMaximumSize(new Dimension(CONTENT_WIDTH, progressLabel.getPreferredSize().height));
 
         progressBar.setMinimum(0);
         progressBar.setStringPainted(false);
-        progressBar.setPreferredSize(new Dimension(TEXT_WIDTH, 10));
-        progressBar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 10));
+        progressBar.setPreferredSize(new Dimension(CONTENT_WIDTH, 10));
+        progressBar.setMinimumSize(new Dimension(CONTENT_WIDTH, 10));
+        progressBar.setMaximumSize(new Dimension(CONTENT_WIDTH, 10));
         progressBar.setAlignmentX(CENTER_ALIGNMENT);
 
         header.add(pluginTitle);
@@ -145,48 +150,80 @@ public final class ZeroKnowledgeIronmanPanel extends PluginPanel
 
     private JPanel buildControls()
     {
-        JPanel controls = new JPanel();
-        controls.setLayout(new BoxLayout(controls, BoxLayout.X_AXIS));
-        controls.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        controls.setBorder(BorderFactory.createEmptyBorder(7, 8, 7, 8));
+        JPanel outer = new JPanel(new BorderLayout());
+        outer.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        outer.setBorder(BorderFactory.createEmptyBorder(7, 8, 7, 8));
 
-        previousButton.setPreferredSize(new Dimension(42, 28));
-        previousButton.setMaximumSize(new Dimension(42, 28));
-        nextButton.setPreferredSize(new Dimension(42, 28));
-        nextButton.setMaximumSize(new Dimension(42, 28));
-        doneButton.setPreferredSize(new Dimension(84, 28));
-        doneButton.setMaximumSize(new Dimension(84, 28));
+        JPanel controls = new JPanel(new GridLayout(1, 3, 6, 0));
+        controls.setOpaque(false);
+        controls.setPreferredSize(new Dimension(CONTENT_WIDTH, 30));
+        controls.setMaximumSize(new Dimension(CONTENT_WIDTH, 30));
 
         controls.add(previousButton);
-        controls.add(Box.createHorizontalGlue());
         controls.add(doneButton);
-        controls.add(Box.createHorizontalGlue());
         controls.add(nextButton);
 
-        return controls;
+        JPanel centered = new JPanel();
+        centered.setOpaque(false);
+        centered.setLayout(new BoxLayout(centered, BoxLayout.X_AXIS));
+        centered.add(Box.createHorizontalGlue());
+        centered.add(controls);
+        centered.add(Box.createHorizontalGlue());
+
+        outer.add(centered, BorderLayout.CENTER);
+        return outer;
     }
 
     private static JPanel createCompactCard()
     {
+        JPanel card = fixedWidthPanel();
+        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+        card.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        card.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(ColorScheme.MEDIUM_GRAY_COLOR),
+            BorderFactory.createEmptyBorder(9, 10, 9, 10)
+        ));
+        return card;
+    }
+
+    private static JPanel fixedWidthPanel()
+    {
         return new JPanel()
         {
+            @Override
+            public Dimension getPreferredSize()
             {
-                setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-                setBackground(ColorScheme.DARKER_GRAY_COLOR);
-                setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(ColorScheme.MEDIUM_GRAY_COLOR),
-                    BorderFactory.createEmptyBorder(9, 9, 9, 9)
-                ));
-                setAlignmentX(LEFT_ALIGNMENT);
+                Dimension preferred = super.getPreferredSize();
+                return new Dimension(CONTENT_WIDTH, preferred.height);
+            }
+
+            @Override
+            public Dimension getMinimumSize()
+            {
+                Dimension preferred = getPreferredSize();
+                return new Dimension(CONTENT_WIDTH, preferred.height);
             }
 
             @Override
             public Dimension getMaximumSize()
             {
                 Dimension preferred = getPreferredSize();
-                return new Dimension(Integer.MAX_VALUE, preferred.height);
+                return new Dimension(CONTENT_WIDTH, preferred.height);
             }
         };
+    }
+
+    private static JPanel centered(JPanel child)
+    {
+        JPanel wrapper = new JPanel();
+        wrapper.setOpaque(false);
+        wrapper.setLayout(new BoxLayout(wrapper, BoxLayout.X_AXIS));
+        wrapper.setAlignmentX(CENTER_ALIGNMENT);
+        wrapper.add(Box.createHorizontalGlue());
+        wrapper.add(child);
+        wrapper.add(Box.createHorizontalGlue());
+        wrapper.setMaximumSize(new Dimension(Integer.MAX_VALUE, child.getPreferredSize().height));
+        return wrapper;
     }
 
     private static JLabel sectionLabel(String text)
