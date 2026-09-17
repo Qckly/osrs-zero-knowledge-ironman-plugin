@@ -1,6 +1,7 @@
 package com.qckly.ironmanguide;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public final class GuideState
@@ -23,6 +24,20 @@ public final class GuideState
         }
 
         return steps.get(currentIndex);
+    }
+
+    public GuideStep getStep(int index)
+    {
+        if (index < 0 || index >= steps.size())
+        {
+            return null;
+        }
+        return steps.get(index);
+    }
+
+    public List<GuideStep> getSteps()
+    {
+        return Collections.unmodifiableList(steps);
     }
 
     public int getCurrentIndex()
