@@ -47,6 +47,7 @@ public class ZeroKnowledgeIronmanPlugin extends Plugin
     private ZeroKnowledgeIronmanPanel panel;
     private ZeroKnowledgeIronmanOverlay objectiveOverlay;
     private WorldGuidanceOverlay worldGuidanceOverlay;
+    private InventoryGuidanceOverlay inventoryGuidanceOverlay;
     private NavigationButton navigationButton;
 
     @Provides
@@ -93,6 +94,13 @@ public class ZeroKnowledgeIronmanPlugin extends Plugin
             tutorialStateTracker
         );
 
+        inventoryGuidanceOverlay = new InventoryGuidanceOverlay(
+            client,
+            guideState,
+            config,
+            tutorialStateTracker
+        );
+
         navigationButton = NavigationButton.builder()
             .tooltip("Zero Knowledge Ironman Guide")
             .icon(createIcon())
@@ -103,6 +111,7 @@ public class ZeroKnowledgeIronmanPlugin extends Plugin
         clientToolbar.addNavigation(navigationButton);
         overlayManager.add(objectiveOverlay);
         overlayManager.add(worldGuidanceOverlay);
+        overlayManager.add(inventoryGuidanceOverlay);
     }
 
     @Subscribe
@@ -175,6 +184,11 @@ public class ZeroKnowledgeIronmanPlugin extends Plugin
     @Override
     protected void shutDown()
     {
+        if (inventoryGuidanceOverlay != null)
+        {
+            overlayManager.remove(inventoryGuidanceOverlay);
+        }
+
         if (worldGuidanceOverlay != null)
         {
             overlayManager.remove(worldGuidanceOverlay);
@@ -191,6 +205,7 @@ public class ZeroKnowledgeIronmanPlugin extends Plugin
         }
 
         navigationButton = null;
+        inventoryGuidanceOverlay = null;
         worldGuidanceOverlay = null;
         objectiveOverlay = null;
         panel = null;
