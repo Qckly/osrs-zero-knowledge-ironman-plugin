@@ -12,6 +12,21 @@ public final class TutorialExactTargetResolver
     {
     }
 
+    public static String resolveAnchorNpcName(GuideStep step, TutorialStateTracker state)
+    {
+        if (step == null || state == null || !state.isOnTutorialIsland())
+        {
+            return null;
+        }
+
+        if ("000.17".equals(step.getId()))
+        {
+            return "Quest Guide";
+        }
+
+        return null;
+    }
+
     public static Integer resolveObjectId(GuideStep step, TutorialStateTracker state)
     {
         if (step == null || state == null || !state.isOnTutorialIsland())
