@@ -41,6 +41,11 @@ public final class TutorialStateTracker
     private Set<String> inventoryItems = Collections.emptySet();
     private Set<String> equippedItems = Collections.emptySet();
     private boolean inventoryVisible;
+    private boolean skillsVisible;
+    private boolean questListVisible;
+    private boolean combatOptionsVisible;
+    private boolean prayerVisible;
+    private boolean magicVisible;
 
     public TutorialStateTracker(Client client)
     {
@@ -56,6 +61,11 @@ public final class TutorialStateTracker
         Set<String> nextInventoryItems = Collections.emptySet();
         Set<String> nextEquippedItems = Collections.emptySet();
         boolean nextInventoryVisible = false;
+        boolean nextSkillsVisible = false;
+        boolean nextQuestListVisible = false;
+        boolean nextCombatOptionsVisible = false;
+        boolean nextPrayerVisible = false;
+        boolean nextMagicVisible = false;
 
         if (nextLoggedIn)
         {
@@ -72,7 +82,13 @@ public final class TutorialStateTracker
             nextEquippedItems = readItemNames(client.getItemContainer(InventoryID.WORN));
 
             Widget inventoryWidget = client.getWidget(InterfaceID.Inventory.ITEMS);
-            nextInventoryVisible = inventoryWidget != null && !inventoryWidget.isHidden();
+            nextInventoryVisible = isVisible(inventoryWidget);
+
+            nextSkillsVisible = isVisible(client.getWidget(InterfaceID.Stats.UNIVERSE));
+            nextQuestListVisible = isVisible(client.getWidget(InterfaceID.Questlist.UNIVERSE));
+            nextCombatOptionsVisible = isVisible(client.getWidget(InterfaceID.CombatInterface.LEVEL));
+            nextPrayerVisible = isVisible(client.getWidget(InterfaceID.Prayerbook.UNIVERSE));
+            nextMagicVisible = isVisible(client.getWidget(InterfaceID.MagicSpellbook.UNIVERSE));
         }
 
         boolean changed =
@@ -81,6 +97,11 @@ public final class TutorialStateTracker
             nextTutorialProgress != tutorialProgress ||
             nextRegionId != regionId ||
             nextInventoryVisible != inventoryVisible ||
+            nextSkillsVisible != skillsVisible ||
+            nextQuestListVisible != questListVisible ||
+            nextCombatOptionsVisible != combatOptionsVisible ||
+            nextPrayerVisible != prayerVisible ||
+            nextMagicVisible != magicVisible ||
             !nextInventoryItems.equals(inventoryItems) ||
             !nextEquippedItems.equals(equippedItems);
 
@@ -91,6 +112,11 @@ public final class TutorialStateTracker
         inventoryItems = nextInventoryItems;
         equippedItems = nextEquippedItems;
         inventoryVisible = nextInventoryVisible;
+        skillsVisible = nextSkillsVisible;
+        questListVisible = nextQuestListVisible;
+        combatOptionsVisible = nextCombatOptionsVisible;
+        prayerVisible = nextPrayerVisible;
+        magicVisible = nextMagicVisible;
 
         if (changed)
         {
@@ -154,6 +180,31 @@ public final class TutorialStateTracker
         return inventoryVisible;
     }
 
+    public boolean isSkillsVisible()
+    {
+        return skillsVisible;
+    }
+
+    public boolean isQuestListVisible()
+    {
+        return questListVisible;
+    }
+
+    public boolean isCombatOptionsVisible()
+    {
+        return combatOptionsVisible;
+    }
+
+    public boolean isPrayerVisible()
+    {
+        return prayerVisible;
+    }
+
+    public boolean isMagicVisible()
+    {
+        return magicVisible;
+    }
+
     public boolean hasInventoryItem(String itemName)
     {
         return inventoryItems.contains(normalize(itemName));
@@ -203,6 +254,11 @@ public final class TutorialStateTracker
         {
             listener.run();
         }
+    }
+
+    private static boolean isVisible(Widget widget)
+    {
+        return widget != null && !widget.isHidden();
     }
 
     private static String normalize(String value)
