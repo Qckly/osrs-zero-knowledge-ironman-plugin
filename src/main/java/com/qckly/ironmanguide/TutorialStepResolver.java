@@ -32,9 +32,11 @@ public final class TutorialStepResolver
             case 1:
                 return "000.01";
             case 2:
-            case 3:
-            case 7:
                 return "000.03";
+            case 3:
+                return "000.03A";
+            case 7:
+                return "000.03B";
             case 10:
                 return "000.04";
 
