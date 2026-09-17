@@ -50,6 +50,37 @@ public final class GuideState
         return steps.size();
     }
 
+    public int findIndexById(String stepId)
+    {
+        if (stepId == null || stepId.trim().isEmpty())
+        {
+            return -1;
+        }
+
+        for (int i = 0; i < steps.size(); i++)
+        {
+            GuideStep step = steps.get(i);
+            if (step != null && stepId.equals(step.getId()))
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    public boolean setCurrentStepId(String stepId)
+    {
+        int index = findIndexById(stepId);
+        if (index < 0)
+        {
+            return false;
+        }
+
+        setCurrentIndex(index);
+        return true;
+    }
+
     public boolean hasPrevious()
     {
         return currentIndex > 0;
