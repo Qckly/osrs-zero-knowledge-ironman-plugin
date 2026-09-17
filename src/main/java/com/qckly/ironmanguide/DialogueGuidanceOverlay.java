@@ -5,6 +5,7 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
+import java.util.Locale;
 import net.runelite.api.Client;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
@@ -15,12 +16,9 @@ import net.runelite.client.ui.overlay.OverlayPosition;
 /**
  * Highlights actionable dialogue UI.
  *
- * V1:
- * - highlights "Click here to continue" wherever that widget appears;
- * - highlights visible dialogue-option rows.
- *
- * A later guide-data pass can add an exact recommended dialogue choice per step
- * so only the correct option is emphasized.
+ * If the current guide step provides DIALOGUE_CHOICE, only the matching choice
+ * is highlighted. Otherwise all visible dialogue options are highlighted.
+ * "Click here to continue" remains supported as a universal continuation action.
  */
 public final class DialogueGuidanceOverlay extends Overlay
 {
@@ -28,15 +26,18 @@ public final class DialogueGuidanceOverlay extends Overlay
     private static final Color FILL = new Color(0, 220, 255, 30);
 
     private final Client client;
+    private final GuideState guideState;
     private final ZeroKnowledgeIronmanConfig config;
     private final TutorialStateTracker tutorialStateTracker;
 
     public DialogueGuidanceOverlay(
         Client client,
+        GuideState guideState,
         ZeroKnowledgeIronmanConfig config,
         TutorialStateTracker tutorialStateTracker)
     {
         this.client = client;
+        this.guideState = guideState;
         this.config = config;
         this.tutorialStateTracker = tutorialStateTracker;
 
@@ -73,6 +74,9 @@ public final class DialogueGuidanceOverlay extends Overlay
             return false;
         }
 
+        GuideStep step = guideState.getCurrentStep();
+        String desired = step == null ? "" : normalize(step.getDialogueChoice());
+
         boolean drew = false;
         Widget[] children = options.getChildren();
         if (children == null)
@@ -85,6 +89,15 @@ public final class DialogueGuidanceOverlay extends Overlay
             if (!isVisible(child) || !hasText(child.getText()))
             {
                 continue;
+            }
+
+            if (!desired.isEmpty())
+            {
+                String optionText = normalize(stripTags(child.getText()));
+                if (!optionText.contains(desired) && !desired.contains(optionText))
+                {
+                    continue;
+                }
             }
 
             drawWidgetBounds(graphics, child);
@@ -116,45 +129,27 @@ public final class DialogueGuidanceOverlay extends Overlay
         }
 
         String text = widget.getText();
-        if (hasText(text) && normalize(text).contains("click here to continue"))
+        if (hasText(text) && normalize(stripTags(text)).contains("click here to continue"))
         {
             drawWidgetBounds(graphics, widget);
         }
 
-        Widget[] children = widget.getChildren();
-        if (children != null)
+        recurse(graphics, widget.getChildren());
+        recurse(graphics, widget.getDynamicChildren());
+        recurse(graphics, widget.getStaticChildren());
+        recurse(graphics, widget.getNestedChildren());
+    }
+
+    private void recurse(Graphics2D graphics, Widget[] widgets)
+    {
+        if (widgets == null)
         {
-            for (Widget child : children)
-            {
-                findAndDrawContinue(graphics, child);
-            }
+            return;
         }
 
-        Widget[] dynamicChildren = widget.getDynamicChildren();
-        if (dynamicChildren != null)
+        for (Widget child : widgets)
         {
-            for (Widget child : dynamicChildren)
-            {
-                findAndDrawContinue(graphics, child);
-            }
-        }
-
-        Widget[] staticChildren = widget.getStaticChildren();
-        if (staticChildren != null)
-        {
-            for (Widget child : staticChildren)
-            {
-                findAndDrawContinue(graphics, child);
-            }
-        }
-
-        Widget[] nestedChildren = widget.getNestedChildren();
-        if (nestedChildren != null)
-        {
-            for (Widget child : nestedChildren)
-            {
-                findAndDrawContinue(graphics, child);
-            }
+            findAndDrawContinue(graphics, child);
         }
     }
 
@@ -184,13 +179,17 @@ public final class DialogueGuidanceOverlay extends Overlay
         return text != null && !text.trim().isEmpty();
     }
 
+    private static String stripTags(String value)
+    {
+        return value == null ? "" : value.replaceAll("<[^>]+>", " ");
+    }
+
     private static String normalize(String text)
     {
         return text == null
             ? ""
-            : text.replaceAll("<[^>]+>", " ")
-                .replace("&nbsp;", " ")
-                .toLowerCase()
+            : text.replace("&nbsp;", " ")
+                .toLowerCase(Locale.ROOT)
                 .replaceAll("\\s+", " ")
                 .trim();
     }
