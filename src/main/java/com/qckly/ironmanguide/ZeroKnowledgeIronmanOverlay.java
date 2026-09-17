@@ -14,6 +14,10 @@ import net.runelite.client.ui.overlay.components.TitleComponent;
 
 /**
  * Compact in-game objective overlay driven by structured guide data.
+ *
+ * During Tutorial Island QA the overlay is forced visible while the client is
+ * detected on Tutorial Island, so persisted RuneLite config cannot make the
+ * guide appear to randomly disappear between dev restarts.
  */
 public final class ZeroKnowledgeIronmanOverlay extends OverlayPanel
 {
@@ -30,11 +34,16 @@ public final class ZeroKnowledgeIronmanOverlay extends OverlayPanel
 
     private final GuideState guideState;
     private final ZeroKnowledgeIronmanConfig config;
+    private final TutorialStateTracker tutorialStateTracker;
 
-    public ZeroKnowledgeIronmanOverlay(GuideState guideState, ZeroKnowledgeIronmanConfig config)
+    public ZeroKnowledgeIronmanOverlay(
+        GuideState guideState,
+        ZeroKnowledgeIronmanConfig config,
+        TutorialStateTracker tutorialStateTracker)
     {
         this.guideState = guideState;
         this.config = config;
+        this.tutorialStateTracker = tutorialStateTracker;
 
         setPosition(OverlayPosition.TOP_LEFT);
         panelComponent.setPreferredSize(new Dimension(OVERLAY_WIDTH, 0));
@@ -46,7 +55,10 @@ public final class ZeroKnowledgeIronmanOverlay extends OverlayPanel
     @Override
     public Dimension render(Graphics2D graphics)
     {
-        if (!config.showObjectiveOverlay())
+        boolean forceVisibleForTutorialQa =
+            tutorialStateTracker != null && tutorialStateTracker.isOnTutorialIsland();
+
+        if (!forceVisibleForTutorialQa && !config.showObjectiveOverlay())
         {
             return null;
         }
@@ -121,10 +133,21 @@ public final class ZeroKnowledgeIronmanOverlay extends OverlayPanel
 
         panelComponent.getChildren().add(
             LineComponent.builder()
-                .left((step.isOptional() ? "Optional • " : "") + "Step " + (guideState.getCurrentIndex() + 1) + " / " + guideState.getStepCount())
+                .left((step.isOptional() ? "Optional • " : "") + "Step " +
+                    (guideState.getCurrentIndex() + 1) + " / " + guideState.getStepCount())
                 .leftColor(MUTED)
                 .build()
         );
+
+        if (forceVisibleForTutorialQa && !config.showObjectiveOverlay())
+        {
+            panelComponent.getChildren().add(
+                LineComponent.builder()
+                    .left("QA: overlay forced on")
+                    .leftColor(MUTED)
+                    .build()
+            );
+        }
 
         return super.render(graphics);
     }
