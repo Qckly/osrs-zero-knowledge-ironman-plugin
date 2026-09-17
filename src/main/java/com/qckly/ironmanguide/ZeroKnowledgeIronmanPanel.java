@@ -22,15 +22,17 @@ import net.runelite.client.ui.DynamicGridLayout;
 import net.runelite.client.ui.PluginPanel;
 
 /**
- * Structured sidebar inspired by the information hierarchy used by Quest Helper:
- * route summary -> active section -> current objective -> visible section steps.
+ * RuneLite sidebar deliberately structured close to Quest Helper:
+ * header -> state/requirements -> highlighted route section -> current action
+ * -> flat step rows. The active action is not wrapped in a large custom card.
  */
 public final class ZeroKnowledgeIronmanPanel extends PluginPanel
 {
-    private static final Color ACCENT = new Color(234, 145, 0);
-    private static final Color ACCENT_TEXT = new Color(255, 180, 0);
-    private static final Color MUTED = new Color(180, 180, 180);
-    private static final Color COMPLETED = new Color(145, 145, 145);
+    private static final Color ORANGE = new Color(234, 145, 0);
+    private static final Color ORANGE_TEXT = new Color(255, 174, 0);
+    private static final Color MUTED = new Color(175, 175, 175);
+    private static final Color COMPLETED = new Color(135, 135, 135);
+    private static final Color RED = new Color(255, 65, 65);
 
     private final GuideState guideState;
     private final JProgressBar progressBar = new JProgressBar();
@@ -41,8 +43,8 @@ public final class ZeroKnowledgeIronmanPanel extends PluginPanel
         this.guideState = guideState;
 
         setBackground(ColorScheme.DARK_GRAY_COLOR);
-        setBorder(new EmptyBorder(8, 8, 8, 8));
-        setLayout(new DynamicGridLayout(0, 1, 0, 7));
+        setBorder(new EmptyBorder(6, 6, 6, 6));
+        setLayout(new DynamicGridLayout(0, 1, 0, 5));
 
         guideState.addListener(() -> SwingUtilities.invokeLater(this::refresh));
         refresh();
@@ -61,9 +63,11 @@ public final class ZeroKnowledgeIronmanPanel extends PluginPanel
         }
 
         add(buildHeader(step));
-        add(buildRouteSummary(step));
+        add(buildStateBlock(step));
+        add(buildRequirementsBlock(step));
+        add(buildWhyBlock(step));
         add(buildSectionBanner(sectionName(step.getChapter())));
-        add(buildCurrentStep(step));
+        add(buildActionBlock(step));
         add(buildSectionSteps(step));
         add(buildControls());
 
@@ -75,7 +79,7 @@ public final class ZeroKnowledgeIronmanPanel extends PluginPanel
     {
         JPanel panel = new JPanel(new DynamicGridLayout(0, 1, 0, 2));
         panel.setOpaque(false);
-        panel.setBorder(new EmptyBorder(0, 2, 2, 2));
+        panel.setBorder(new EmptyBorder(1, 1, 4, 1));
 
         JLabel title = new JLabel("IRONMAN GUIDE", SwingConstants.CENTER);
         title.setForeground(Color.WHITE);
@@ -106,59 +110,84 @@ public final class ZeroKnowledgeIronmanPanel extends PluginPanel
         return panel;
     }
 
-    private JPanel buildRouteSummary(GuideStep step)
+    private JPanel buildStateBlock(GuideStep step)
     {
-        JPanel panel = darkBlock();
-        panel.setLayout(new DynamicGridLayout(0, 1, 0, 4));
+        JPanel panel = questHelperBlock();
+        panel.setLayout(new DynamicGridLayout(0, 1, 0, 5));
 
-        panel.add(label("ROUTE STATE", Color.LIGHT_GRAY, Font.PLAIN, 12f));
-        panel.add(label("Standard Ironman", Color.WHITE, Font.BOLD, 14f));
-        panel.add(label("Active: " + sectionName(step.getChapter()), MUTED, Font.PLAIN, 12.5f));
+        panel.add(label("Route State", Color.LIGHT_GRAY, Font.PLAIN, 13f));
+        panel.add(valueStrip("Standard Ironman"));
+        panel.add(valueStrip("Active: " + sectionName(step.getChapter())));
+        return panel;
+    }
+
+    private JPanel buildRequirementsBlock(GuideStep step)
+    {
+        JPanel panel = questHelperBlock();
+        panel.setLayout(new DynamicGridLayout(0, 1, 0, 5));
+
+        panel.add(label("Current requirements:", Color.LIGHT_GRAY, Font.PLAIN, 13f));
+
+        String requirement = requirementFor(step);
+        if (requirement == null)
+        {
+            panel.add(valueStrip("None"));
+        }
+        else
+        {
+            JTextArea req = textArea(requirement, RED, Font.BOLD, 13.5f);
+            JPanel strip = valueStripPanel();
+            strip.add(req, BorderLayout.CENTER);
+            panel.add(strip);
+        }
+        return panel;
+    }
+
+    private JPanel buildWhyBlock(GuideStep step)
+    {
+        JPanel panel = questHelperBlock();
+        panel.setLayout(new DynamicGridLayout(0, 1, 0, 5));
+        panel.add(label("Why this matters:", Color.LIGHT_GRAY, Font.PLAIN, 13f));
+
+        JPanel strip = valueStripPanel();
+        strip.add(textArea(step.getWhy(), Color.LIGHT_GRAY, Font.PLAIN, 13.5f), BorderLayout.CENTER);
+        panel.add(strip);
         return panel;
     }
 
     private JPanel buildSectionBanner(String section)
     {
         JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(ACCENT);
-        panel.setBorder(new EmptyBorder(8, 10, 8, 10));
+        panel.setBackground(ORANGE);
+        panel.setBorder(new EmptyBorder(9, 10, 9, 10));
 
         JLabel title = new JLabel(section);
         title.setForeground(Color.BLACK);
-        title.setFont(title.getFont().deriveFont(Font.BOLD, 15f));
+        title.setFont(title.getFont().deriveFont(Font.BOLD, 15.5f));
         panel.add(title, BorderLayout.CENTER);
         return panel;
     }
 
-    private JPanel buildCurrentStep(GuideStep step)
+    private JPanel buildActionBlock(GuideStep step)
     {
-        JPanel panel = darkBlock();
-        panel.setLayout(new DynamicGridLayout(0, 1, 0, 7));
+        JPanel panel = questHelperBlock();
+        panel.setLayout(new DynamicGridLayout(0, 1, 0, 5));
 
-        JLabel heading = label(
-            "CURRENT STEP  ·  " + (guideState.getCurrentIndex() + 1) + "/" + guideState.getStepCount(),
-            ACCENT_TEXT,
-            Font.BOLD,
-            13f
-        );
-        panel.add(heading);
+        panel.add(label("Do this now:", Color.LIGHT_GRAY, Font.PLAIN, 13f));
 
-        JTextArea title = textArea(step.getTitle(), Color.WHITE, Font.BOLD, 16.5f);
-        JTextArea instruction = textArea(step.getInstruction(), Color.LIGHT_GRAY, Font.PLAIN, 14.5f);
-        panel.add(title);
-        panel.add(instruction);
+        JPanel titleStrip = valueStripPanel();
+        titleStrip.add(textArea(step.getTitle(), ORANGE_TEXT, Font.BOLD, 15f), BorderLayout.CENTER);
+        panel.add(titleStrip);
 
-        JLabel whyHeading = label("WHY", ACCENT_TEXT, Font.BOLD, 12.5f);
-        JTextArea why = textArea(step.getWhy(), MUTED, Font.PLAIN, 13.5f);
-        panel.add(whyHeading);
-        panel.add(why);
-
+        JPanel instructionStrip = valueStripPanel();
+        instructionStrip.add(textArea(step.getInstruction(), Color.LIGHT_GRAY, Font.PLAIN, 14f), BorderLayout.CENTER);
+        panel.add(instructionStrip);
         return panel;
     }
 
     private JPanel buildSectionSteps(GuideStep current)
     {
-        JPanel panel = new JPanel(new DynamicGridLayout(0, 1, 0, 2));
+        JPanel panel = new JPanel(new DynamicGridLayout(0, 1, 0, 0));
         panel.setOpaque(false);
 
         String chapter = current.getChapter();
@@ -169,10 +198,8 @@ public final class ZeroKnowledgeIronmanPanel extends PluginPanel
             {
                 continue;
             }
-
             panel.add(buildStepRow(step, i));
         }
-
         return panel;
     }
 
@@ -183,16 +210,16 @@ public final class ZeroKnowledgeIronmanPanel extends PluginPanel
 
         JPanel row = new JPanel(new BorderLayout());
         row.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        row.setBackground(active ? ColorScheme.DARKER_GRAY_COLOR : ColorScheme.DARK_GRAY_COLOR);
+        row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         row.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createMatteBorder(0, 0, 1, 0, ColorScheme.MEDIUM_GRAY_COLOR),
-            new EmptyBorder(8, 8, 8, 8)
+            new EmptyBorder(8, 7, 8, 7)
         ));
 
-        String prefix = active ? "› " : completed ? "✓ " : "";
+        String prefix = completed ? "✓ " : "";
         JTextArea text = textArea(
             prefix + step.getTitle(),
-            active ? ACCENT_TEXT : completed ? COMPLETED : Color.WHITE,
+            active ? ORANGE_TEXT : completed ? COMPLETED : Color.LIGHT_GRAY,
             active ? Font.BOLD : Font.PLAIN,
             13.5f
         );
@@ -206,7 +233,6 @@ public final class ZeroKnowledgeIronmanPanel extends PluginPanel
                 guideState.setCurrentIndex(index);
             }
         });
-
         return row;
     }
 
@@ -214,7 +240,7 @@ public final class ZeroKnowledgeIronmanPanel extends PluginPanel
     {
         JPanel controls = new JPanel(new GridLayout(1, 3, 5, 0));
         controls.setOpaque(false);
-        controls.setBorder(new EmptyBorder(3, 0, 0, 0));
+        controls.setBorder(new EmptyBorder(4, 0, 1, 0));
 
         JButton back = new JButton("Back");
         JButton done = new JButton(guideState.hasNext() ? "Done" : "Finished");
@@ -234,14 +260,29 @@ public final class ZeroKnowledgeIronmanPanel extends PluginPanel
         return controls;
     }
 
-    private static JPanel darkBlock()
+    private static JPanel questHelperBlock()
     {
         JPanel panel = new JPanel();
+        panel.setOpaque(false);
+        panel.setBorder(new EmptyBorder(0, 0, 0, 0));
+        return panel;
+    }
+
+    private static JPanel valueStripPanel()
+    {
+        JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        panel.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(ColorScheme.MEDIUM_GRAY_COLOR),
-            new EmptyBorder(10, 10, 10, 10)
-        ));
+        panel.setBorder(new EmptyBorder(7, 7, 7, 7));
+        return panel;
+    }
+
+    private static JPanel valueStrip(String text)
+    {
+        JPanel panel = valueStripPanel();
+        JLabel label = new JLabel(text);
+        label.setForeground(Color.WHITE);
+        label.setFont(label.getFont().deriveFont(Font.PLAIN, 13.5f));
+        panel.add(label, BorderLayout.CENTER);
         return panel;
     }
 
@@ -270,6 +311,36 @@ public final class ZeroKnowledgeIronmanPanel extends PluginPanel
         return area;
     }
 
+    private static String requirementFor(GuideStep step)
+    {
+        String id = step.getId();
+        if ("ch01-step-002".equals(id))
+        {
+            return "Standard Ironman selection before leaving Tutorial Island";
+        }
+        if ("ch01-step-005".equals(id))
+        {
+            return "1 x Spade\n1 x Hammer\nCoins";
+        }
+        if ("ch01-step-010".equals(id))
+        {
+            return "7 x Normal logs\n4 x Ashes";
+        }
+        if ("ch01-step-011".equals(id))
+        {
+            return "Normal logs + tinderbox";
+        }
+        if ("ch01-step-012".equals(id))
+        {
+            return "Knife + normal logs";
+        }
+        if ("ch01-step-016".equals(id))
+        {
+            return "Spade\nBasic food\nCoins\nCurrent X Marks the Spot items";
+        }
+        return null;
+    }
+
     private static String sectionName(String chapter)
     {
         if (chapter == null || chapter.trim().isEmpty())
@@ -282,7 +353,6 @@ public final class ZeroKnowledgeIronmanPanel extends PluginPanel
         {
             return chapter.substring(dash + 1).trim();
         }
-
         return chapter;
     }
 }
