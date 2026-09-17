@@ -70,7 +70,8 @@ public class ZeroKnowledgeIronmanPlugin extends Plugin
             client,
             guideState,
             config,
-            modelOutlineRenderer
+            modelOutlineRenderer,
+            tutorialStateTracker
         );
 
         navigationButton = NavigationButton.builder()
