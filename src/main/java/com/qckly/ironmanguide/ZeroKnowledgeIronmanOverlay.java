@@ -25,7 +25,8 @@ public final class ZeroKnowledgeIronmanOverlay extends OverlayPanel
     private static final Color TITLE = Color.WHITE;
     private static final Color ACTION = new Color(255, 170, 0);
     private static final Color LABEL = new Color(220, 220, 220);
-    private static final Color REQUIREMENT = new Color(255, 90, 90);
+    private static final Color REQUIREMENT_MISSING = new Color(255, 90, 90);
+    private static final Color REQUIREMENT_OK = new Color(100, 205, 120);
     private static final Color TARGET = new Color(235, 235, 235);
     private static final Color MUTED = new Color(165, 165, 165);
 
@@ -117,14 +118,33 @@ public final class ZeroKnowledgeIronmanOverlay extends OverlayPanel
                     .build()
             );
 
-            for (String requirement : step.getRequirement().split("\\n"))
+            for (String requirement : step.getRequirement().split("\\+|\\n"))
             {
-                for (String line : wrap(requirement, WRAP_AT))
+                String part = requirement.trim();
+                if (part.isEmpty())
+                {
+                    continue;
+                }
+
+                RequirementEvaluator.Status status =
+                    RequirementEvaluator.evaluate(part, tutorialStateTracker);
+
+                Color requirementColor = status == RequirementEvaluator.Status.SATISFIED
+                    ? REQUIREMENT_OK
+                    : status == RequirementEvaluator.Status.UNSATISFIED
+                        ? REQUIREMENT_MISSING
+                        : LABEL;
+
+                String display = status == RequirementEvaluator.Status.SATISFIED
+                    ? "✓ " + part
+                    : part;
+
+                for (String line : wrap(display, WRAP_AT))
                 {
                     panelComponent.getChildren().add(
                         LineComponent.builder()
                             .left(line)
-                            .leftColor(REQUIREMENT)
+                            .leftColor(requirementColor)
                             .build()
                     );
                 }
