@@ -11,12 +11,12 @@ import net.runelite.client.config.ConfigSection;
 public interface ZeroKnowledgeIronmanConfig extends Config
 {
     @ConfigSection(
-        name = "Path colours",
-        description = "Colours used by the tile-by-tile route guidance",
+        name = "Colours",
+        description = "Colours used by guide highlights",
         position = 10,
         closedByDefault = false
     )
-    String pathColoursSection = "pathColours";
+    String coloursSection = "colours";
     @ConfigItem(
         keyName = "autoAdvance",
         name = "Auto-advance",
@@ -49,13 +49,25 @@ public interface ZeroKnowledgeIronmanConfig extends Config
         return true;
     }
 
+    @ConfigItem(
+        keyName = "textHighlightColor",
+        name = "Text highlight colour",
+        description = "Colour used for dialogue choices and Click here to continue",
+        section = coloursSection,
+        position = 0
+    )
+    default Color textHighlightColor()
+    {
+        return new Color(0, 0, 255);
+    }
+
     @Alpha
     @ConfigItem(
         keyName = "pathOutlineColor",
         name = "Path outline",
         description = "Outline colour of normal path tiles",
-        section = pathColoursSection,
-        position = 0
+        section = coloursSection,
+        position = 1
     )
     default Color pathOutlineColor()
     {
@@ -67,8 +79,8 @@ public interface ZeroKnowledgeIronmanConfig extends Config
         keyName = "pathFillColor",
         name = "Path fill",
         description = "Fill colour and opacity of normal path tiles",
-        section = pathColoursSection,
-        position = 1
+        section = coloursSection,
+        position = 2
     )
     default Color pathFillColor()
     {
@@ -80,8 +92,8 @@ public interface ZeroKnowledgeIronmanConfig extends Config
         keyName = "pathTargetOutlineColor",
         name = "Final tile outline",
         description = "Outline colour of the final destination tile",
-        section = pathColoursSection,
-        position = 2
+        section = coloursSection,
+        position = 3
     )
     default Color pathTargetOutlineColor()
     {
@@ -93,8 +105,8 @@ public interface ZeroKnowledgeIronmanConfig extends Config
         keyName = "pathTargetFillColor",
         name = "Final tile fill",
         description = "Fill colour and opacity of the final destination tile",
-        section = pathColoursSection,
-        position = 3
+        section = coloursSection,
+        position = 4
     )
     default Color pathTargetFillColor()
     {
