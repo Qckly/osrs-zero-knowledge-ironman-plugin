@@ -52,7 +52,7 @@ public final class TutorialStepResolver
 
         if (progress == 50)
         {
-            return "000.08";
+            return state.isSkillsVisible() ? "000.09" : "000.08";
         }
 
         if (progress == 60)
@@ -139,7 +139,7 @@ public final class TutorialStepResolver
 
         if (progress == 230)
         {
-            return "000.19";
+            return state.isQuestListVisible() ? "000.20" : "000.19";
         }
 
         if (progress >= 240 && progress < 260)
@@ -220,9 +220,13 @@ public final class TutorialStepResolver
 
             if (!bow)
             {
-                // We cannot yet distinguish the Combat Options / rat-pit / first
-                // melee kill substates perfectly. Keep the persisted step rather
-                // than guess once the basic equipment setup is complete.
+                if (swordEquipped && shieldEquipped && state.isCombatOptionsVisible())
+                {
+                    return "000.32";
+                }
+
+                // We cannot yet distinguish rat-pit entry vs first melee kill
+                // perfectly. Keep the persisted step rather than guess.
                 return null;
             }
 
