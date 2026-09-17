@@ -27,6 +27,7 @@
 
 ### 000.02 — Choose the new-player path
 **TARGET:** Familiarity/experience question  
+**DIALOGUE_CHOICE:** brand new  
 **DO:** When asked how familiar you are with Old School RuneScape, choose the answer that says you are **brand new / new to the game**. Do not choose an experienced-player skip.  
 **WHY:** This keeps the complete tutorial enabled.  
 **COMPLETE WHEN:** You can continue with the Gielinor Guide.
@@ -198,6 +199,7 @@
 
 ### 000.26A — Smith a bronze dagger
 **TARGET:** Bronze dagger in the Smithing interface  
+**UI_TARGET:** Dagger  
 **REQUIRED:** Hammer + bronze bar  
 **DO:** Select **Bronze dagger** and wait for your character to smith it.  
 **COMPLETE WHEN:** Bronze dagger is in your inventory.
@@ -222,6 +224,7 @@
 
 ### 000.28A — Open Equipment Stats
 **TARGET:** Equipment Stats button in the Worn Equipment tab  
+**UI_TARGET:** View equipment stats  
 **DO:** Click **View equipment stats** / the equipment-stats button shown by the tutorial.  
 **COMPLETE WHEN:** The equipment-stats interface opens and the tutorial asks you to equip the bronze dagger.
 
@@ -365,6 +368,7 @@
 
 ### 000.46 — Cast Wind Strike on a chicken
 **TARGET:** Chicken in the northern pen  
+**UI_TARGET:** Wind Strike  
 **REQUIRED:** Wind Strike + supplied air/mind runes  
 **DO:** Select **Wind Strike**, then click a chicken in the northern pen.  
 **COMPLETE WHEN:** The spell is cast and **Learning the Ropes completes**.
@@ -379,6 +383,7 @@ You now have **1 Quest Point**, but **do not leave Tutorial Island yet**. We sti
 
 ### 000.47 — Talk to Terrova after quest completion
 **TARGET:** Magic Instructor  
+**DIALOGUE_CHOICE:** Ironman  
 **DO:** Talk to him again. He will prepare you to leave for Lumbridge and give you the chance to speak to the Ironman tutor first. Choose to deal with Ironman mode before leaving.  
 **COMPLETE WHEN:** You are free to go to the Ironman tutor rather than teleporting away.
 
@@ -389,6 +394,7 @@ You now have **1 Quest Point**, but **do not leave Tutorial Island yet**. We sti
 
 ### 000.49 — Select Standard Ironman
 **TARGET:** Ironman mode selection  
+**UI_TARGET:** Standard Ironman  
 **DO:** Choose **Standard Ironman**. Do not choose Hardcore, Ultimate, Group Ironman or a normal account for this route. Confirm the selection requested by the interface.  
 **COMPLETE WHEN:** The account is registered as **Standard Ironman**.
 
@@ -409,6 +415,7 @@ You now have **1 Quest Point**, but **do not leave Tutorial Island yet**. We sti
 
 ### 000.52 — Cast Lumbridge Home Teleport
 **TARGET:** Lumbridge Home Teleport in the Magic interface  
+**UI_TARGET:** Lumbridge Home Teleport  
 **DO:** Open the Magic interface and select **Lumbridge Home Teleport**. Let the teleport animation finish; do not cancel it by moving or clicking elsewhere.  
 **COMPLETE WHEN:** You arrive in Lumbridge.
 
