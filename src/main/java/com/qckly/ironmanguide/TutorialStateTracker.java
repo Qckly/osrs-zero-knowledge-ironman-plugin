@@ -6,6 +6,8 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.Set;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
@@ -40,6 +42,8 @@ public final class TutorialStateTracker
     private int regionId = -1;
     private Set<String> inventoryItems = Collections.emptySet();
     private Set<String> equippedItems = Collections.emptySet();
+    private Map<String, Integer> inventoryItemCounts = Collections.emptyMap();
+    private Map<String, Integer> equippedItemCounts = Collections.emptyMap();
     private boolean inventoryVisible;
     private boolean skillsVisible;
     private boolean questListVisible;
@@ -58,6 +62,8 @@ public final class TutorialStateTracker
         boolean nextOnTutorialIsland = false;
         int nextTutorialProgress = -1;
         int nextRegionId = -1;
+        Map<String, Integer> nextInventoryItemCounts = Collections.emptyMap();
+        Map<String, Integer> nextEquippedItemCounts = Collections.emptyMap();
         Set<String> nextInventoryItems = Collections.emptySet();
         Set<String> nextEquippedItems = Collections.emptySet();
         boolean nextInventoryVisible = false;
@@ -78,8 +84,10 @@ public final class TutorialStateTracker
                 nextOnTutorialIsland = TUTORIAL_ISLAND_REGIONS.contains(nextRegionId);
             }
 
-            nextInventoryItems = readItemNames(client.getItemContainer(InventoryID.INV));
-            nextEquippedItems = readItemNames(client.getItemContainer(InventoryID.WORN));
+            nextInventoryItemCounts = readItemCounts(client.getItemContainer(InventoryID.INV));
+            nextEquippedItemCounts = readItemCounts(client.getItemContainer(InventoryID.WORN));
+            nextInventoryItems = nextInventoryItemCounts.keySet();
+            nextEquippedItems = nextEquippedItemCounts.keySet();
 
             Widget inventoryWidget = client.getWidget(InterfaceID.Inventory.ITEMS);
             nextInventoryVisible = isVisible(inventoryWidget);
@@ -102,13 +110,15 @@ public final class TutorialStateTracker
             nextCombatOptionsVisible != combatOptionsVisible ||
             nextPrayerVisible != prayerVisible ||
             nextMagicVisible != magicVisible ||
-            !nextInventoryItems.equals(inventoryItems) ||
-            !nextEquippedItems.equals(equippedItems);
+            !nextInventoryItemCounts.equals(inventoryItemCounts) ||
+            !nextEquippedItemCounts.equals(equippedItemCounts);
 
         loggedIn = nextLoggedIn;
         onTutorialIsland = nextOnTutorialIsland;
         tutorialProgress = nextTutorialProgress;
         regionId = nextRegionId;
+        inventoryItemCounts = nextInventoryItemCounts;
+        equippedItemCounts = nextEquippedItemCounts;
         inventoryItems = nextInventoryItems;
         equippedItems = nextEquippedItems;
         inventoryVisible = nextInventoryVisible;
@@ -124,14 +134,14 @@ public final class TutorialStateTracker
         }
     }
 
-    private Set<String> readItemNames(ItemContainer container)
+    private Map<String, Integer> readItemCounts(ItemContainer container)
     {
         if (container == null)
         {
-            return Collections.emptySet();
+            return Collections.emptyMap();
         }
 
-        Set<String> names = new HashSet<>();
+        Map<String, Integer> counts = new HashMap<>();
         for (Item item : container.getItems())
         {
             if (item == null || item.getId() <= 0)
@@ -148,11 +158,11 @@ public final class TutorialStateTracker
             String normalized = normalize(composition.getName());
             if (!normalized.isEmpty() && !"null".equals(normalized))
             {
-                names.add(normalized);
+                counts.merge(normalized, Math.max(1, item.getQuantity()), Integer::sum);
             }
         }
 
-        return Collections.unmodifiableSet(names);
+        return Collections.unmodifiableMap(counts);
     }
 
     public boolean isLoggedIn()
@@ -207,7 +217,22 @@ public final class TutorialStateTracker
 
     public boolean hasInventoryItem(String itemName)
     {
-        return inventoryItems.contains(normalize(itemName));
+        return getInventoryQuantity(itemName) > 0;
+    }
+
+    public int getInventoryQuantity(String itemName)
+    {
+        return quantityFor(inventoryItemCounts, normalize(itemName));
+    }
+
+    public int getEquippedQuantity(String itemName)
+    {
+        return quantityFor(equippedItemCounts, normalize(itemName));
+    }
+
+    public int getPossessedQuantity(String itemName)
+    {
+        return getInventoryQuantity(itemName) + getEquippedQuantity(itemName);
     }
 
     public boolean hasAnyInventoryItem(String... itemNames)
@@ -230,7 +255,7 @@ public final class TutorialStateTracker
 
     public boolean hasEquippedItem(String itemName)
     {
-        return equippedItems.contains(normalize(itemName));
+        return getEquippedQuantity(itemName) > 0;
     }
 
     public Set<String> getInventoryItems()
@@ -254,6 +279,36 @@ public final class TutorialStateTracker
         {
             listener.run();
         }
+    }
+
+    private static int quantityFor(Map<String, Integer> counts, String requested)
+    {
+        if (requested == null || requested.isEmpty())
+        {
+            return 0;
+        }
+
+        Integer exact = counts.get(requested);
+        if (exact != null)
+        {
+            return exact;
+        }
+
+        // Small normalization bridge for guide prose such as "bronze arrows"
+        // vs the RuneLite item name "bronze arrow".
+        String singular = requested.endsWith("s") ? requested.substring(0, requested.length() - 1) : requested;
+        String plural = requested.endsWith("s") ? requested : requested + "s";
+
+        for (Map.Entry<String, Integer> entry : counts.entrySet())
+        {
+            String name = entry.getKey();
+            if (name.equals(singular) || name.equals(plural))
+            {
+                return entry.getValue();
+            }
+        }
+
+        return 0;
     }
 
     private static boolean isVisible(Widget widget)
