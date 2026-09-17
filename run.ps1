@@ -25,13 +25,13 @@ function Get-JavaMajorVersion([string]$javaExe) {
     return 0
 }
 
-function Test-JdkHome([string]$home) {
-    if (-not $home -or -not (Test-Path $home)) {
+function Test-JdkHome([string]$jdkHomePath) {
+    if (-not $jdkHomePath -or -not (Test-Path $jdkHomePath)) {
         return $null
     }
 
-    $java = Join-Path $home 'bin\java.exe'
-    $javac = Join-Path $home 'bin\javac.exe'
+    $java = Join-Path $jdkHomePath 'bin\java.exe'
+    $javac = Join-Path $jdkHomePath 'bin\javac.exe'
     if ((Test-Path $java) -and (Test-Path $javac) -and ((Get-JavaMajorVersion $java) -ge 11)) {
         return $java
     }
@@ -98,8 +98,8 @@ foreach ($root in $roots | Select-Object -Unique) {
             Get-ChildItem -Path $vendorRoot -Filter javac.exe -File -Recurse -ErrorAction SilentlyContinue |
                 ForEach-Object {
                     $binDir = Split-Path -Parent $_.FullName
-                    $home = Split-Path -Parent $binDir
-                    $candidateHomes.Add($home)
+                    $discoveredJdkHome = Split-Path -Parent $binDir
+                    $candidateHomes.Add($discoveredJdkHome)
                 }
         }
         catch {
@@ -109,11 +109,11 @@ foreach ($root in $roots | Select-Object -Unique) {
 
 # 4) Try all discovered JDK homes, preferring the highest Java version.
 $validJdks = @()
-foreach ($home in $candidateHomes | Where-Object { $_ } | Select-Object -Unique) {
-    $candidate = Test-JdkHome $home
+foreach ($jdkCandidateHome in $candidateHomes | Where-Object { $_ } | Select-Object -Unique) {
+    $candidate = Test-JdkHome $jdkCandidateHome
     if ($candidate) {
         $validJdks += [PSCustomObject]@{
-            Home = $home
+            Home = $jdkCandidateHome
             Java = $candidate
             Version = Get-JavaMajorVersion $candidate
         }
@@ -140,8 +140,8 @@ if (-not $javaExe) {
     Write-Host ''
     Write-Host 'Java 11 or newer JDK was not found.' -ForegroundColor Red
     Write-Host 'Installed JDK locations checked:' -ForegroundColor Yellow
-    foreach ($home in $candidateHomes | Where-Object { $_ } | Select-Object -Unique) {
-        Write-Host "  $home" -ForegroundColor DarkGray
+    foreach ($jdkCandidateHome in $candidateHomes | Where-Object { $_ } | Select-Object -Unique) {
+        Write-Host "  $jdkCandidateHome" -ForegroundColor DarkGray
     }
     Write-Host ''
     Write-Host 'Diagnostic command:' -ForegroundColor Yellow
