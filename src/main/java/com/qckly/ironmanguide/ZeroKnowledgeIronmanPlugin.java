@@ -14,6 +14,7 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.overlay.OverlayManager;
+import net.runelite.client.ui.overlay.outline.ModelOutlineRenderer;
 
 @PluginDescriptor(
     name = "Zero Knowledge Ironman Guide",
@@ -32,12 +33,16 @@ public class ZeroKnowledgeIronmanPlugin extends Plugin
     private OverlayManager overlayManager;
 
     @Inject
+    private ModelOutlineRenderer modelOutlineRenderer;
+
+    @Inject
     private ZeroKnowledgeIronmanConfig config;
 
     private GuideState guideState;
     private TutorialStateTracker tutorialStateTracker;
     private ZeroKnowledgeIronmanPanel panel;
     private ZeroKnowledgeIronmanOverlay objectiveOverlay;
+    private WorldGuidanceOverlay worldGuidanceOverlay;
     private NavigationButton navigationButton;
 
     @Provides
@@ -54,10 +59,18 @@ public class ZeroKnowledgeIronmanPlugin extends Plugin
         tutorialStateTracker.refresh();
 
         panel = new ZeroKnowledgeIronmanPanel(guideState, tutorialStateTracker);
+
         objectiveOverlay = new ZeroKnowledgeIronmanOverlay(
             guideState,
             config,
             tutorialStateTracker
+        );
+
+        worldGuidanceOverlay = new WorldGuidanceOverlay(
+            client,
+            guideState,
+            config,
+            modelOutlineRenderer
         );
 
         navigationButton = NavigationButton.builder()
@@ -69,6 +82,7 @@ public class ZeroKnowledgeIronmanPlugin extends Plugin
 
         clientToolbar.addNavigation(navigationButton);
         overlayManager.add(objectiveOverlay);
+        overlayManager.add(worldGuidanceOverlay);
     }
 
     @Subscribe
@@ -83,6 +97,11 @@ public class ZeroKnowledgeIronmanPlugin extends Plugin
     @Override
     protected void shutDown()
     {
+        if (worldGuidanceOverlay != null)
+        {
+            overlayManager.remove(worldGuidanceOverlay);
+        }
+
         if (objectiveOverlay != null)
         {
             overlayManager.remove(objectiveOverlay);
@@ -94,6 +113,7 @@ public class ZeroKnowledgeIronmanPlugin extends Plugin
         }
 
         navigationButton = null;
+        worldGuidanceOverlay = null;
         objectiveOverlay = null;
         panel = null;
         tutorialStateTracker = null;
