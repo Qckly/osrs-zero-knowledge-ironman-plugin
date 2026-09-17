@@ -113,12 +113,12 @@ public final class ZeroKnowledgeIronmanOverlay extends OverlayPanel
         {
             panelComponent.getChildren().add(
                 LineComponent.builder()
-                    .left("Requirements:")
+                    .left("Item requirements:")
                     .leftColor(LABEL)
                     .build()
             );
 
-            for (String requirement : step.getRequirement().split("\\+|\\n"))
+            for (String requirement : step.getRequirement().split("(?i)\\s*(?:\\+|/|\\bor\\b|\\band\\b|\\n)\\s*"))
             {
                 String part = requirement.trim();
                 if (part.isEmpty())
@@ -135,9 +135,7 @@ public final class ZeroKnowledgeIronmanOverlay extends OverlayPanel
                         ? REQUIREMENT_MISSING
                         : LABEL;
 
-                String display = status == RequirementEvaluator.Status.SATISFIED
-                    ? "✓ " + part
-                    : part;
+                String display = formatItemRequirement(part);
 
                 for (String line : wrap(display, WRAP_AT))
                 {
@@ -170,6 +168,28 @@ public final class ZeroKnowledgeIronmanOverlay extends OverlayPanel
         }
 
         return super.render(graphics);
+    }
+
+    private static String formatItemRequirement(String raw)
+    {
+        String text = raw == null ? "" : raw.trim();
+        text = text
+            .replaceAll("(?i)\\bin (?:your )?inventory\\b", "")
+            .replaceAll("(?i)\\bequipped\\b", "")
+            .replaceAll("(?i)\\bavailable\\b", "")
+            .trim();
+
+        if (text.matches("^\\d+\\s*x\\s+.*"))
+        {
+            return text;
+        }
+
+        if (text.matches("^\\d+\\s+.*"))
+        {
+            return text.replaceFirst("^(\\d+)\\s+", "$1 x ");
+        }
+
+        return "1 x " + text;
     }
 
     private static boolean hasText(String value)
