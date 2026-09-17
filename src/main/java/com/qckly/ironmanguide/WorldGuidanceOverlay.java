@@ -1,19 +1,19 @@
 package com.qckly.ironmanguide;
 
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Shape;
 import java.util.Locale;
 import net.runelite.api.Client;
-import net.runelite.api.DecorativeObject;
 import net.runelite.api.GameObject;
-import net.runelite.api.GroundObject;
 import net.runelite.api.NPC;
 import net.runelite.api.ObjectComposition;
+import net.runelite.api.Player;
 import net.runelite.api.Tile;
 import net.runelite.api.TileObject;
-import net.runelite.api.WallObject;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
@@ -23,9 +23,18 @@ import net.runelite.client.ui.overlay.outline.ModelOutlineRenderer;
 /**
  * Renders Quest-Helper-style world guidance for the current guide target.
  *
- * V1 matches the current step TARGET text against loaded NPC and scene-object
- * names. Later revisions can move to explicit target IDs/coordinates for full
- * determinism, but this gives us real live guidance on Tutorial Island now.
+ * V2 deliberately selects one primary target instead of highlighting every
+ * matching object/NPC in the loaded scene. This keeps the guide readable and
+ * makes the world guidance behave like a navigation aid rather than a debug
+ * object inspector.
+ *
+ * Selection policy for now:
+ *   1. Match current TARGET text against loaded NPC/object names.
+ *   2. Ignore candidates on another plane.
+ *   3. Select the nearest matching candidate to the local player.
+ *
+ * A later route-data pass can replace NEAREST with explicit target IDs,
+ * preferred tiles/areas and path-distance scoring for steps that need it.
  */
 public final class WorldGuidanceOverlay extends Overlay
 {
@@ -68,41 +77,75 @@ public final class WorldGuidanceOverlay extends Overlay
         }
 
         GuideStep step = guideState.getCurrentStep();
-        if (step == null || !hasText(step.getTarget()))
+        Player player = client.getLocalPlayer();
+        if (step == null || player == null || !hasText(step.getTarget()))
         {
             return null;
         }
 
         String target = normalize(step.getTarget());
+        WorldPoint playerPoint = player.getWorldLocation();
+        if (playerPoint == null)
+        {
+            return null;
+        }
 
-        renderMatchingNpcs(target);
-        renderMatchingObjects(graphics, target);
+        GuidanceTarget primary = findPrimaryTarget(target, playerPoint);
+        if (primary == null)
+        {
+            return null;
+        }
+
+        if (primary.npc != null)
+        {
+            modelOutlineRenderer.drawOutline(primary.npc, 2, CYAN, 2);
+        }
+        else if (primary.object != null)
+        {
+            modelOutlineRenderer.drawOutline(primary.object, 2, CYAN, 2);
+
+            Shape clickbox = primary.object.getClickbox();
+            if (clickbox != null)
+            {
+                OverlayUtil.renderPolygon(
+                    graphics,
+                    clickbox,
+                    CYAN,
+                    CYAN_FILL,
+                    new BasicStroke(1.5f)
+                );
+            }
+        }
 
         return null;
     }
 
-    private void renderMatchingNpcs(String target)
+    private GuidanceTarget findPrimaryTarget(String target, WorldPoint playerPoint)
     {
+        GuidanceTarget best = null;
+
         for (NPC npc : client.getNpcs())
         {
-            String name = npc.getName();
-            if (!matchesTarget(target, name))
+            if (!matchesTarget(target, npc.getName()))
             {
                 continue;
             }
 
-            modelOutlineRenderer.drawOutline(npc, 2, CYAN, 2);
-        }
-    }
+            WorldPoint point = npc.getWorldLocation();
+            if (!isCandidateOnPlayerPlane(playerPoint, point))
+            {
+                continue;
+            }
 
-    private void renderMatchingObjects(Graphics2D graphics, String target)
-    {
+            best = nearer(best, new GuidanceTarget(npc, null, distance(playerPoint, point)));
+        }
+
         Tile[][][] sceneTiles = client.getScene().getTiles();
         int plane = client.getPlane();
 
         if (sceneTiles == null || plane < 0 || plane >= sceneTiles.length)
         {
-            return;
+            return best;
         }
 
         for (Tile[] row : sceneTiles[plane])
@@ -119,42 +162,77 @@ public final class WorldGuidanceOverlay extends Overlay
                     continue;
                 }
 
-                renderObjectIfMatching(graphics, target, tile.getWallObject());
-                renderObjectIfMatching(graphics, target, tile.getDecorativeObject());
-                renderObjectIfMatching(graphics, target, tile.getGroundObject());
+                best = considerObject(best, target, playerPoint, tile.getWallObject());
+                best = considerObject(best, target, playerPoint, tile.getDecorativeObject());
+                best = considerObject(best, target, playerPoint, tile.getGroundObject());
 
                 GameObject[] gameObjects = tile.getGameObjects();
                 if (gameObjects != null)
                 {
                     for (GameObject gameObject : gameObjects)
                     {
-                        renderObjectIfMatching(graphics, target, gameObject);
+                        best = considerObject(best, target, playerPoint, gameObject);
                     }
                 }
             }
         }
+
+        return best;
     }
 
-    private void renderObjectIfMatching(Graphics2D graphics, String target, TileObject object)
+    private GuidanceTarget considerObject(
+        GuidanceTarget current,
+        String target,
+        WorldPoint playerPoint,
+        TileObject object)
     {
-        if (object == null)
+        if (object == null || !matchesTarget(target, objectName(object)))
         {
-            return;
+            return current;
         }
 
-        String name = objectName(object);
-        if (!matchesTarget(target, name))
+        WorldPoint point = object.getWorldLocation();
+        if (!isCandidateOnPlayerPlane(playerPoint, point))
         {
-            return;
+            return current;
         }
 
-        modelOutlineRenderer.drawOutline(object, 2, CYAN, 2);
+        return nearer(
+            current,
+            new GuidanceTarget(null, object, distance(playerPoint, point))
+        );
+    }
 
-        Shape clickbox = object.getClickbox();
-        if (clickbox != null)
+    private static GuidanceTarget nearer(GuidanceTarget current, GuidanceTarget candidate)
+    {
+        if (candidate == null)
         {
-            OverlayUtil.renderPolygon(graphics, clickbox, CYAN, CYAN_FILL, new java.awt.BasicStroke(1.5f));
+            return current;
         }
+
+        if (current == null || candidate.distance < current.distance)
+        {
+            return candidate;
+        }
+
+        return current;
+    }
+
+    private static int distance(WorldPoint from, WorldPoint to)
+    {
+        if (from == null || to == null)
+        {
+            return Integer.MAX_VALUE;
+        }
+
+        return from.distanceTo(to);
+    }
+
+    private static boolean isCandidateOnPlayerPlane(WorldPoint player, WorldPoint candidate)
+    {
+        return player != null
+            && candidate != null
+            && player.getPlane() == candidate.getPlane();
     }
 
     private String objectName(TileObject object)
@@ -190,10 +268,6 @@ public final class WorldGuidanceOverlay extends Overlay
             return false;
         }
 
-        // Exact/substring matching works well with our human-readable targets:
-        // "Fishing spot in the nearby pond" -> "Fishing spot"
-        // "Survival Expert / Brynna" -> "Survival Expert"
-        // "Any normal Tree in the survival area" -> "Tree"
         return normalizedTarget.equals(candidate)
             || normalizedTarget.contains(candidate)
             || candidate.contains(normalizedTarget);
@@ -212,5 +286,19 @@ public final class WorldGuidanceOverlay extends Overlay
     private static boolean hasText(String value)
     {
         return value != null && !value.trim().isEmpty();
+    }
+
+    private static final class GuidanceTarget
+    {
+        private final NPC npc;
+        private final TileObject object;
+        private final int distance;
+
+        private GuidanceTarget(NPC npc, TileObject object, int distance)
+        {
+            this.npc = npc;
+            this.object = object;
+            this.distance = distance;
+        }
     }
 }
