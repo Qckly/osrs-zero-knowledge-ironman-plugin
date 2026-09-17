@@ -10,6 +10,7 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
+import net.runelite.client.ui.overlay.OverlayManager;
 
 @PluginDescriptor(
     name = "Zero Knowledge Ironman Guide",
@@ -21,7 +22,15 @@ public class ZeroKnowledgeIronmanPlugin extends Plugin
     @Inject
     private ClientToolbar clientToolbar;
 
+    @Inject
+    private OverlayManager overlayManager;
+
+    @Inject
+    private ZeroKnowledgeIronmanConfig config;
+
+    private GuideState guideState;
     private ZeroKnowledgeIronmanPanel panel;
+    private ZeroKnowledgeIronmanOverlay objectiveOverlay;
     private NavigationButton navigationButton;
 
     @Provides
@@ -33,7 +42,10 @@ public class ZeroKnowledgeIronmanPlugin extends Plugin
     @Override
     protected void startUp()
     {
-        panel = new ZeroKnowledgeIronmanPanel();
+        guideState = new GuideState(GuideRepository.getSteps());
+        panel = new ZeroKnowledgeIronmanPanel(guideState);
+        objectiveOverlay = new ZeroKnowledgeIronmanOverlay(guideState, config);
+
         navigationButton = NavigationButton.builder()
             .tooltip("Zero Knowledge Ironman Guide")
             .icon(createIcon())
@@ -42,18 +54,26 @@ public class ZeroKnowledgeIronmanPlugin extends Plugin
             .build();
 
         clientToolbar.addNavigation(navigationButton);
+        overlayManager.add(objectiveOverlay);
     }
 
     @Override
     protected void shutDown()
     {
+        if (objectiveOverlay != null)
+        {
+            overlayManager.remove(objectiveOverlay);
+        }
+
         if (navigationButton != null)
         {
             clientToolbar.removeNavigation(navigationButton);
         }
 
         navigationButton = null;
+        objectiveOverlay = null;
         panel = null;
+        guideState = null;
     }
 
     private static BufferedImage createIcon()
