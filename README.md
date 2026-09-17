@@ -24,17 +24,13 @@ The plugin is guidance-only. It will not automate gameplay or perform player act
 
 This repository follows the official RuneLite external plugin structure and targets `latest.release`.
 
-Run the development client with:
+Open the repository in IntelliJ IDEA as a Gradle project, or run with a locally installed Gradle:
 
 ```bash
-./gradlew run
+gradle run
 ```
 
-On Windows:
-
-```powershell
-.\gradlew.bat run
-```
+A Gradle wrapper will be added before the first packaged development release.
 
 ## Status
 
