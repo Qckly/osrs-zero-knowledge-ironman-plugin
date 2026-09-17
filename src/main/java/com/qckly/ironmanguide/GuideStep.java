@@ -9,12 +9,13 @@ public final class GuideStep
     private final String why;
     private final String target;
     private final String requirement;
+    private final String recommendedItems;
     private final String completeWhen;
     private final boolean optional;
 
     public GuideStep(String id, String chapter, String title, String instruction, String why)
     {
-        this(id, chapter, title, instruction, why, null, null, null, false);
+        this(id, chapter, title, instruction, why, null, null, null, null, false);
     }
 
     public GuideStep(
@@ -25,6 +26,7 @@ public final class GuideStep
         String why,
         String target,
         String requirement,
+        String recommendedItems,
         String completeWhen,
         boolean optional)
     {
@@ -35,6 +37,7 @@ public final class GuideStep
         this.why = why;
         this.target = target;
         this.requirement = requirement;
+        this.recommendedItems = recommendedItems;
         this.completeWhen = completeWhen;
         this.optional = optional;
     }
@@ -72,6 +75,11 @@ public final class GuideStep
     public String getRequirement()
     {
         return requirement;
+    }
+
+    public String getRecommendedItems()
+    {
+        return recommendedItems;
     }
 
     public String getCompleteWhen()
