@@ -39,6 +39,7 @@
 
 ### 000.03A — Open Settings
 **TARGET:** Settings / wrench icon indicated by the tutorial  
+**UI_TARGET:** Settings  
 **DO:** Click the flashing Settings icon. You do not need to change any settings yet.  
 **COMPLETE WHEN:** The Settings interface has opened and the tutorial tells you to speak to the Gielinor Guide again.
 
@@ -64,6 +65,7 @@
 
 ### 000.06 — Open your inventory
 **TARGET:** Backpack / Inventory icon  
+**UI_TARGET:** Inventory  
 **DO:** Click the backpack icon when it flashes.  
 **COMPLETE WHEN:** Your inventory is visible and the tutorial directs you to fish.
 
@@ -75,6 +77,7 @@
 
 ### 000.08 — Open the Skills interface
 **TARGET:** Skills icon  
+**UI_TARGET:** Skills  
 **DO:** Click the flashing Skills icon after receiving Fishing XP.  
 **COMPLETE WHEN:** The Skills interface opens and the tutorial allows you to continue.
 
@@ -147,6 +150,7 @@
 
 ### 000.19 — Open the Quest List
 **TARGET:** Quest List icon  
+**UI_TARGET:** Quest List  
 **DO:** Click the flashing Quest List icon.  
 **REMEMBER:** Red = not started, yellow = in progress, green = completed.  
 **COMPLETE WHEN:** The tutorial tells you to speak to the Quest Guide again.
@@ -219,6 +223,7 @@
 
 ### 000.28 — Open Worn Equipment
 **TARGET:** Worn Equipment icon  
+**UI_TARGET:** Worn Equipment  
 **DO:** Click the flashing Worn Equipment icon.  
 **COMPLETE WHEN:** The equipment tab is open and the tutorial asks you to view your equipment stats.
 
@@ -245,6 +250,7 @@
 
 ### 000.31 — Open Combat Options
 **TARGET:** Crossed-swords Combat Options icon  
+**UI_TARGET:** Combat Options  
 **DO:** Click the flashing icon and view the available attack styles.  
 **COMPLETE WHEN:** The tutorial allows you to enter the rat pit.
 
@@ -305,6 +311,7 @@
 
 ### 000.41 — Open Account Management
 **TARGET:** Person/cog Account Management icon  
+**UI_TARGET:** Account Management  
 **DO:** Click the flashing Account Management icon.  
 **COMPLETE WHEN:** The Account Management tab is open and the tutorial tells you to speak to the Account Guide again.
 
@@ -324,6 +331,7 @@
 
 ### 000.43 — Open the Prayer interface
 **TARGET:** Star-shaped Prayer icon  
+**UI_TARGET:** Prayer  
 **DO:** Click the flashing Prayer icon.  
 **COMPLETE WHEN:** The Prayer interface is open and the tutorial tells you to speak to Brother Brace again.
 
@@ -334,6 +342,7 @@
 
 ### 000.43B — Open the Friends List
 **TARGET:** Friends List / social icon indicated by the tutorial  
+**UI_TARGET:** Friends List  
 **DO:** Click the flashing Friends List icon.  
 **COMPLETE WHEN:** The Friends List opens and the tutorial tells you to speak to Brother Brace again.
 
@@ -358,6 +367,7 @@
 
 ### 000.45A — Open the Magic interface
 **TARGET:** Spellbook / Magic icon  
+**UI_TARGET:** Magic  
 **DO:** Click the flashing Magic icon.  
 **COMPLETE WHEN:** The spellbook is open and the tutorial tells you to speak to the Magic Instructor again.
 
