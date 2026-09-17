@@ -45,6 +45,8 @@ public final class GuideRepository
                 null,
                 null,
                 null,
+                null,
+                null,
                 Collections.emptyList(),
                 false
             ));
@@ -88,6 +90,14 @@ public final class GuideRepository
                 if (trimmed.startsWith("**TARGET:**"))
                 {
                     current.target = fieldValue(trimmed, "**TARGET:**");
+                }
+                else if (trimmed.startsWith("**UI_TARGET:**"))
+                {
+                    current.uiTarget = fieldValue(trimmed, "**UI_TARGET:**");
+                }
+                else if (trimmed.startsWith("**DIALOGUE_CHOICE:**"))
+                {
+                    current.dialogueChoice = fieldValue(trimmed, "**DIALOGUE_CHOICE:**");
                 }
                 else if (trimmed.startsWith("**WAYPOINT:**"))
                 {
@@ -206,6 +216,8 @@ public final class GuideRepository
         private String requirement;
         private String recommendedItems;
         private String completeWhen;
+        private String uiTarget;
+        private String dialogueChoice;
         private final List<GuideWaypoint> waypoints = new ArrayList<>();
         private boolean optional;
 
@@ -318,6 +330,8 @@ public final class GuideRepository
                 requirement,
                 recommendedItems,
                 finalCompleteWhen,
+                uiTarget,
+                dialogueChoice,
                 new ArrayList<>(waypoints),
                 optional
             );
