@@ -34,18 +34,21 @@ public final class ZeroKnowledgeIronmanPanel extends PluginPanel
     private static final Color GREEN = new Color(100, 205, 120);
 
     private final GuideState guideState;
+    private final TutorialStateTracker tutorialStateTracker;
     private final JProgressBar progressBar = new JProgressBar();
 
-    public ZeroKnowledgeIronmanPanel(GuideState guideState)
+    public ZeroKnowledgeIronmanPanel(GuideState guideState, TutorialStateTracker tutorialStateTracker)
     {
         super();
         this.guideState = guideState;
+        this.tutorialStateTracker = tutorialStateTracker;
 
         setBackground(ColorScheme.DARK_GRAY_COLOR);
         setBorder(new EmptyBorder(6, 6, 6, 6));
         setLayout(new DynamicGridLayout(0, 1, 0, 5));
 
         guideState.addListener(() -> SwingUtilities.invokeLater(this::refresh));
+        tutorialStateTracker.addListener(() -> SwingUtilities.invokeLater(this::refresh));
         refresh();
     }
 
@@ -62,6 +65,7 @@ public final class ZeroKnowledgeIronmanPanel extends PluginPanel
         }
 
         add(buildHeader(step));
+        add(buildLiveStateBlock());
         add(buildStateBlock(step));
 
         if (hasText(step.getTarget()))
@@ -125,6 +129,40 @@ public final class ZeroKnowledgeIronmanPanel extends PluginPanel
         panel.add(chapter);
         panel.add(progress);
         panel.add(progressBar);
+        return panel;
+    }
+
+    private JPanel buildLiveStateBlock()
+    {
+        JPanel panel = questHelperBlock();
+        panel.setLayout(new DynamicGridLayout(0, 1, 0, 5));
+
+        panel.add(label("Live game state", Color.LIGHT_GRAY, Font.PLAIN, 13f));
+
+        String status;
+        Color statusColor;
+        if (!tutorialStateTracker.isLoggedIn())
+        {
+            status = "Not logged in";
+            statusColor = MUTED;
+        }
+        else if (tutorialStateTracker.isOnTutorialIsland())
+        {
+            status = "Tutorial Island detected";
+            statusColor = GREEN;
+        }
+        else
+        {
+            status = "Outside Tutorial Island";
+            statusColor = ORANGE_TEXT;
+        }
+
+        JPanel statusStrip = valueStripPanel();
+        statusStrip.add(textArea(status, statusColor, Font.BOLD, 13.5f), BorderLayout.CENTER);
+        panel.add(statusStrip);
+
+        panel.add(valueStrip("Tutorial progress: " + tutorialStateTracker.getTutorialProgress()));
+        panel.add(valueStrip("Region: " + tutorialStateTracker.getRegionId()));
         return panel;
     }
 
