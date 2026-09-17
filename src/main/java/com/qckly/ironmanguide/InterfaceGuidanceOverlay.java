@@ -59,10 +59,17 @@ public final class InterfaceGuidanceOverlay extends Overlay
             return null;
         }
 
-        String key = (step.getTitle() + " " + step.getTarget() + " " + step.getInstruction())
-            .toLowerCase();
+        String key = step.getUiTarget() != null
+            ? step.getUiTarget().toLowerCase()
+            : (step.getTitle() + " " + step.getTarget() + " " + step.getInstruction()).toLowerCase();
 
-        if (key.contains("quest list"))
+        if (key.contains("combat options") || key.equals("combat"))
+        {
+            drawFirstVisible(graphics,
+                client.getWidget(InterfaceID.Toplevel.STONE0),
+                client.getWidget(InterfaceID.ToplevelOsrsStretch.STONE0));
+        }
+        else if (key.contains("quest list"))
         {
             drawFirstVisible(graphics,
                 client.getWidget(InterfaceID.Toplevel.STONE2),
@@ -97,6 +104,18 @@ public final class InterfaceGuidanceOverlay extends Overlay
             drawFirstVisible(graphics,
                 client.getWidget(InterfaceID.Toplevel.STONE6),
                 client.getWidget(InterfaceID.ToplevelOsrsStretch.STONE6));
+        }
+        else if (key.contains("friends list") || key.equals("friends"))
+        {
+            drawFirstVisible(graphics,
+                client.getWidget(InterfaceID.Toplevel.STONE9),
+                client.getWidget(InterfaceID.ToplevelOsrsStretch.STONE9));
+        }
+        else if (key.contains("settings") || key.contains("options"))
+        {
+            drawFirstVisible(graphics,
+                client.getWidget(InterfaceID.Toplevel.STONE11),
+                client.getWidget(InterfaceID.ToplevelOsrsStretch.STONE11));
         }
 
         return null;
