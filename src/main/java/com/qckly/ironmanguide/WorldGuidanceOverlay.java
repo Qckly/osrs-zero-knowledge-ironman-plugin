@@ -95,23 +95,27 @@ public final class WorldGuidanceOverlay extends Overlay
 
         GuidanceTarget primary = findGameHintTarget(playerPoint);
 
+        Integer exactObjectId = TutorialExactTargetResolver.resolveObjectId(step, tutorialStateTracker);
+        String anchorNpcName = TutorialExactTargetResolver.resolveAnchorNpcName(step, tutorialStateTracker);
+
+        if (primary == null && exactObjectId != null)
+        {
+            primary = findExactObjectTarget(exactObjectId, playerPoint);
+        }
+
         if (primary == null)
         {
-            Integer exactObjectId = TutorialExactTargetResolver.resolveObjectId(step, tutorialStateTracker);
-            String anchorNpcName = TutorialExactTargetResolver.resolveAnchorNpcName(step, tutorialStateTracker);
+            primary = findRouteWaypoint(step, playerPoint);
+        }
 
-            if (exactObjectId != null)
-            {
-                primary = findExactObjectTarget(exactObjectId, playerPoint);
-            }
-            else if (anchorNpcName != null)
-            {
-                primary = findEntrywayNearNpc(anchorNpcName, playerPoint);
-            }
-            else
-            {
-                primary = findPrimaryTarget(target, playerPoint);
-            }
+        if (primary == null && anchorNpcName != null)
+        {
+            primary = findEntrywayNearNpc(anchorNpcName, playerPoint);
+        }
+
+        if (primary == null)
+        {
+            primary = findPrimaryTarget(target, playerPoint);
         }
         if (primary == null)
         {
@@ -158,6 +162,70 @@ public final class WorldGuidanceOverlay extends Overlay
         }
 
         return null;
+    }
+
+    private GuidanceTarget findRouteWaypoint(GuideStep step, WorldPoint playerPoint)
+    {
+        if (step.getWaypoints() == null || step.getWaypoints().isEmpty())
+        {
+            return null;
+        }
+
+        int nearestIndex = -1;
+        int nearestDistance = Integer.MAX_VALUE;
+
+        for (int i = 0; i < step.getWaypoints().size(); i++)
+        {
+            GuideWaypoint waypoint = step.getWaypoints().get(i);
+            WorldPoint point = new WorldPoint(
+                waypoint.getX(),
+                waypoint.getY(),
+                waypoint.getPlane()
+            );
+
+            if (!isCandidateOnPlayerPlane(playerPoint, point))
+            {
+                continue;
+            }
+
+            int distance = distance(playerPoint, point);
+            if (distance < nearestDistance)
+            {
+                nearestDistance = distance;
+                nearestIndex = i;
+            }
+        }
+
+        if (nearestIndex < 0)
+        {
+            return null;
+        }
+
+        int targetIndex = nearestIndex;
+
+        // Once the player reaches a waypoint, advance to the next waypoint in
+        // route order instead of sending them backwards to the point just hit.
+        if (nearestDistance <= 4)
+        {
+            for (int i = nearestIndex + 1; i < step.getWaypoints().size(); i++)
+            {
+                GuideWaypoint next = step.getWaypoints().get(i);
+                if (next.getPlane() == playerPoint.getPlane())
+                {
+                    targetIndex = i;
+                    break;
+                }
+            }
+        }
+
+        GuideWaypoint targetWaypoint = step.getWaypoints().get(targetIndex);
+        WorldPoint point = new WorldPoint(
+            targetWaypoint.getX(),
+            targetWaypoint.getY(),
+            targetWaypoint.getPlane()
+        );
+
+        return new GuidanceTarget(null, null, point, distance(playerPoint, point));
     }
 
     private GuidanceTarget findGameHintTarget(WorldPoint playerPoint)
