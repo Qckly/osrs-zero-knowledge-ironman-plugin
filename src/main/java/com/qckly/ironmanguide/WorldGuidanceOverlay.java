@@ -91,9 +91,21 @@ public final class WorldGuidanceOverlay extends Overlay
         }
 
         Integer exactObjectId = TutorialExactTargetResolver.resolveObjectId(step, tutorialStateTracker);
-        GuidanceTarget primary = exactObjectId != null
-            ? findExactObjectTarget(exactObjectId, playerPoint)
-            : findPrimaryTarget(target, playerPoint);
+        String anchorNpcName = TutorialExactTargetResolver.resolveAnchorNpcName(step, tutorialStateTracker);
+
+        GuidanceTarget primary;
+        if (exactObjectId != null)
+        {
+            primary = findExactObjectTarget(exactObjectId, playerPoint);
+        }
+        else if (anchorNpcName != null)
+        {
+            primary = findEntrywayNearNpc(anchorNpcName, playerPoint);
+        }
+        else
+        {
+            primary = findPrimaryTarget(target, playerPoint);
+        }
         if (primary == null)
         {
             return null;
@@ -123,6 +135,133 @@ public final class WorldGuidanceOverlay extends Overlay
         return null;
     }
 
+
+
+    private GuidanceTarget findEntrywayNearNpc(String anchorNpcName, WorldPoint playerPoint)
+    {
+        NPC anchor = null;
+        int anchorDistance = Integer.MAX_VALUE;
+
+        for (NPC npc : client.getNpcs())
+        {
+            if (!matchesTarget(normalize(anchorNpcName), npc.getName()))
+            {
+                continue;
+            }
+
+            WorldPoint point = npc.getWorldLocation();
+            if (!isCandidateOnPlayerPlane(playerPoint, point))
+            {
+                continue;
+            }
+
+            int distance = distance(playerPoint, point);
+            if (distance < anchorDistance)
+            {
+                anchorDistance = distance;
+                anchor = npc;
+            }
+        }
+
+        if (anchor == null)
+        {
+            return null;
+        }
+
+        WorldPoint anchorPoint = anchor.getWorldLocation();
+        GuidanceTarget best = null;
+        int bestAnchorDistance = Integer.MAX_VALUE;
+
+        Tile[][][] sceneTiles = client.getScene().getTiles();
+        int plane = client.getPlane();
+
+        if (sceneTiles == null || plane < 0 || plane >= sceneTiles.length)
+        {
+            return null;
+        }
+
+        for (Tile[] row : sceneTiles[plane])
+        {
+            if (row == null)
+            {
+                continue;
+            }
+
+            for (Tile tile : row)
+            {
+                if (tile == null)
+                {
+                    continue;
+                }
+
+                TileObject[] candidates = {
+                    tile.getWallObject(),
+                    tile.getDecorativeObject(),
+                    tile.getGroundObject()
+                };
+
+                for (TileObject object : candidates)
+                {
+                    GuidanceTarget selected = entrywayCandidate(object, anchorPoint, playerPoint, bestAnchorDistance);
+                    if (selected != null)
+                    {
+                        best = selected;
+                        bestAnchorDistance = distance(anchorPoint, object.getWorldLocation());
+                    }
+                }
+
+                GameObject[] gameObjects = tile.getGameObjects();
+                if (gameObjects != null)
+                {
+                    for (GameObject object : gameObjects)
+                    {
+                        GuidanceTarget selected = entrywayCandidate(object, anchorPoint, playerPoint, bestAnchorDistance);
+                        if (selected != null)
+                        {
+                            best = selected;
+                            bestAnchorDistance = distance(anchorPoint, object.getWorldLocation());
+                        }
+                    }
+                }
+            }
+        }
+
+        return best;
+    }
+
+    private GuidanceTarget entrywayCandidate(
+        TileObject object,
+        WorldPoint anchorPoint,
+        WorldPoint playerPoint,
+        int currentBestAnchorDistance)
+    {
+        if (object == null)
+        {
+            return null;
+        }
+
+        String name = normalize(objectName(object));
+        if (!"door".equals(name) && !"gate".equals(name))
+        {
+            return null;
+        }
+
+        WorldPoint point = object.getWorldLocation();
+        if (!isCandidateOnPlayerPlane(playerPoint, point))
+        {
+            return null;
+        }
+
+        int anchorDistance = distance(anchorPoint, point);
+
+        // The intended building entry should be physically close to its guide NPC.
+        if (anchorDistance > 12 || anchorDistance >= currentBestAnchorDistance)
+        {
+            return null;
+        }
+
+        return new GuidanceTarget(null, object, distance(playerPoint, point));
+    }
 
     private GuidanceTarget findExactObjectTarget(int objectId, WorldPoint playerPoint)
     {
