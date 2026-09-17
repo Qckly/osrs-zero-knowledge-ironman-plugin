@@ -3,6 +3,8 @@ package com.qckly.ironmanguide;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
+import java.awt.Point;
+import java.awt.Rectangle;
 import java.util.ArrayList;
 import java.util.List;
 import net.runelite.client.ui.overlay.OverlayPanel;
@@ -11,22 +13,21 @@ import net.runelite.client.ui.overlay.components.LineComponent;
 import net.runelite.client.ui.overlay.components.TitleComponent;
 
 /**
- * Compact in-game objective overlay.
- *
- * This intentionally follows the information hierarchy that makes Quest Helper
- * comfortable to use: the current task is the title, the immediate instruction
- * is underneath, and secondary guide prose stays out of the game view.
+ * Compact in-game objective overlay inspired by Quest Helper's information hierarchy.
+ * The sidebar contains the full explanation; this box only tells the player what to
+ * do now and what is needed for the current step.
  */
 public final class ZeroKnowledgeIronmanOverlay extends OverlayPanel
 {
-    private static final Color OBJECTIVE = Color.WHITE;
+    private static final Color BACKGROUND = new Color(30, 30, 30, 215);
+    private static final Color TITLE = Color.WHITE;
     private static final Color ACTION = new Color(255, 170, 0);
     private static final Color LABEL = new Color(220, 220, 220);
-    private static final Color MUTED = new Color(170, 170, 170);
+    private static final Color REQUIREMENT = new Color(255, 90, 90);
+    private static final Color MUTED = new Color(165, 165, 165);
 
-    // Quest Helper-style compact overlay rather than a wide paragraph panel.
-    private static final int OVERLAY_WIDTH = 190;
-    private static final int WRAP_AT = 27;
+    private static final int OVERLAY_WIDTH = 205;
+    private static final int WRAP_AT = 30;
 
     private final GuideState guideState;
     private final ZeroKnowledgeIronmanConfig config;
@@ -38,6 +39,9 @@ public final class ZeroKnowledgeIronmanOverlay extends OverlayPanel
 
         setPosition(OverlayPosition.TOP_LEFT);
         panelComponent.setPreferredSize(new Dimension(OVERLAY_WIDTH, 0));
+        panelComponent.setBackgroundColor(BACKGROUND);
+        panelComponent.setBorder(new Rectangle(7, 7, 7, 7));
+        panelComponent.setGap(new Point(0, 3));
     }
 
     @Override
@@ -56,16 +60,15 @@ public final class ZeroKnowledgeIronmanOverlay extends OverlayPanel
 
         panelComponent.getChildren().clear();
 
-        // The task itself is the visual headline, just like a Quest Helper step.
+        // Main objective title.
         panelComponent.getChildren().add(
             TitleComponent.builder()
                 .text(step.getTitle())
-                .color(OBJECTIVE)
+                .color(TITLE)
                 .build()
         );
 
-        // Show only the immediate action in the game view. Long explanations belong
-        // in the sidebar. This prevents the overlay from becoming a wall of text.
+        // One concise immediate-action sentence in orange.
         String actionText = firstSentence(step.getInstruction());
         for (String line : wrap(actionText, WRAP_AT))
         {
@@ -77,16 +80,71 @@ public final class ZeroKnowledgeIronmanOverlay extends OverlayPanel
             );
         }
 
+        // Visible Quest Helper-style requirements section. These are intentionally
+        // lightweight until GuideStep gains structured requirement/item fields.
         panelComponent.getChildren().add(
             LineComponent.builder()
-                .left("Step")
+                .left("Requirements:")
                 .leftColor(LABEL)
-                .right((guideState.getCurrentIndex() + 1) + " / " + guideState.getStepCount())
-                .rightColor(MUTED)
+                .build()
+        );
+
+        for (String requirement : requirementsFor(step))
+        {
+            panelComponent.getChildren().add(
+                LineComponent.builder()
+                    .left(requirement)
+                    .leftColor(REQUIREMENT)
+                    .build()
+            );
+        }
+
+        panelComponent.getChildren().add(
+            LineComponent.builder()
+                .left("Step " + (guideState.getCurrentIndex() + 1) + " / " + guideState.getStepCount())
+                .leftColor(MUTED)
                 .build()
         );
 
         return super.render(graphics);
+    }
+
+    private static List<String> requirementsFor(GuideStep step)
+    {
+        List<String> requirements = new ArrayList<>();
+
+        switch (step.getId())
+        {
+            case "ch01-step-002":
+                requirements.add("Standard Ironman selected");
+                break;
+            case "ch01-step-005":
+                requirements.add("1 x Spade");
+                requirements.add("1 x Hammer");
+                requirements.add("Coins");
+                break;
+            case "ch01-step-010":
+                requirements.add("7 x Normal logs");
+                requirements.add("4 x Ashes");
+                break;
+            case "ch01-step-011":
+                requirements.add("15 Firemaking");
+                break;
+            case "ch01-step-012":
+                requirements.add("Knife");
+                requirements.add("~1,000 arrow shafts");
+                break;
+            case "ch01-step-016":
+                requirements.add("Spade");
+                requirements.add("Basic food");
+                requirements.add("Coins");
+                break;
+            default:
+                requirements.add("None");
+                break;
+        }
+
+        return requirements;
     }
 
     private static String firstSentence(String text)
@@ -98,7 +156,7 @@ public final class ZeroKnowledgeIronmanOverlay extends OverlayPanel
 
         String trimmed = text.trim();
         int fullStop = trimmed.indexOf('.');
-        if (fullStop >= 0 && fullStop + 1 < trimmed.length())
+        if (fullStop >= 0)
         {
             return trimmed.substring(0, fullStop + 1);
         }
