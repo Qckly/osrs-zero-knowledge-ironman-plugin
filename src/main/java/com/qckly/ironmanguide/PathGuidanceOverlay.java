@@ -35,10 +35,6 @@ import net.runelite.client.ui.overlay.OverlayUtil;
  */
 public final class PathGuidanceOverlay extends Overlay
 {
-    private static final Color CYAN = new Color(0, 220, 255);
-    private static final Color CYAN_FILL = new Color(0, 220, 255, 35);
-    private static final Color TARGET_FILL = new Color(0, 220, 255, 70);
-
     private static final int[][] DIRECTIONS = {
         {1, 0}, {-1, 0}, {0, 1}, {0, -1},
         {1, 1}, {1, -1}, {-1, 1}, {-1, -1}
@@ -143,11 +139,18 @@ public final class PathGuidanceOverlay extends Overlay
             }
 
             boolean last = i == cachedPath.size() - 1;
+            Color outlineColor = last
+                ? config.pathTargetOutlineColor()
+                : config.pathOutlineColor();
+            Color fillColor = last
+                ? config.pathTargetFillColor()
+                : config.pathFillColor();
+
             OverlayUtil.renderPolygon(
                 graphics,
                 poly,
-                CYAN,
-                last ? TARGET_FILL : CYAN_FILL,
+                outlineColor,
+                fillColor,
                 new BasicStroke(last ? 3f : 2f)
             );
         }
