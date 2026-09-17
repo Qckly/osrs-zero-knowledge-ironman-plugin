@@ -33,8 +33,18 @@
 
 ### 000.03 — Talk to the Gielinor Guide
 **TARGET:** Gielinor Guide  
-**DO:** Left-click **Talk-to Gielinor Guide** and continue through the required dialogue/tutorial prompts.  
-**COMPLETE WHEN:** The control guide tells you to leave through the door.
+**DO:** Left-click **Talk-to Gielinor Guide** and continue until he asks you to open the game settings.  
+**COMPLETE WHEN:** The tutorial asks you to open the Settings interface.
+
+### 000.03A — Open Settings
+**TARGET:** Settings / wrench icon indicated by the tutorial  
+**DO:** Click the flashing Settings icon. You do not need to change any settings yet.  
+**COMPLETE WHEN:** The Settings interface has opened and the tutorial tells you to speak to the Gielinor Guide again.
+
+### 000.03B — Talk to the Gielinor Guide again
+**TARGET:** Gielinor Guide  
+**DO:** Close the Settings interface if it blocks the view, then talk to the Gielinor Guide again. Continue until he tells you to leave the house.  
+**COMPLETE WHEN:** The east door becomes the next tutorial target.
 
 ### 000.04 — Leave the first house
 **TARGET:** East door  
