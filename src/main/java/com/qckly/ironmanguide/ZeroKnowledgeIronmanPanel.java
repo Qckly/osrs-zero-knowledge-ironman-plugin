@@ -6,35 +6,45 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
 import javax.swing.BorderFactory;
-import javax.swing.Box;
-import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.border.EmptyBorder;
 import net.runelite.client.ui.ColorScheme;
+import net.runelite.client.ui.DynamicGridLayout;
 import net.runelite.client.ui.PluginPanel;
 
+/**
+ * Main sidebar for the guide.
+ *
+ * The panel intentionally follows RuneLite's native sidebar layout model:
+ * one full-width vertical column, content anchored to the top, and no fixed
+ * pixel-width cards or HTML layout tricks.
+ */
 public final class ZeroKnowledgeIronmanPanel extends PluginPanel
 {
-    private static final int CONTENT_WIDTH = 196;
-    private static final int TEXT_WIDTH = 166;
-    private static final Color ACCENT = new Color(255, 165, 0);
+    private static final Color ACCENT = new Color(255, 170, 0);
+    private static final Color MUTED = new Color(180, 180, 180);
 
     private final GuideState guideState;
 
     private final JLabel chapterLabel = new JLabel();
     private final JLabel progressLabel = new JLabel();
-    private final JLabel titleLabel = new JLabel();
-    private final JLabel instructionLabel = new JLabel();
-    private final JLabel whyLabel = new JLabel();
+    private final JLabel stepHeaderLabel = new JLabel();
+    private final JTextArea titleText = createTextArea(Font.BOLD, 15f, Color.WHITE);
+    private final JTextArea instructionText = createTextArea(Font.PLAIN, 13f, Color.LIGHT_GRAY);
+    private final JTextArea whyText = createTextArea(Font.PLAIN, 12.5f, MUTED);
     private final JProgressBar progressBar = new JProgressBar();
-    private final JButton previousButton = new JButton("←");
-    private final JButton doneButton = new JButton("Done");
-    private final JButton nextButton = new JButton("→");
+
+    private final JButton previousButton = new JButton("Back");
+    private final JButton doneButton = new JButton("Complete");
+    private final JButton nextButton = new JButton("Next");
 
     public ZeroKnowledgeIronmanPanel(GuideState guideState)
     {
@@ -44,31 +54,32 @@ public final class ZeroKnowledgeIronmanPanel extends PluginPanel
         setLayout(new BorderLayout());
         setBackground(ColorScheme.DARK_GRAY_COLOR);
 
-        JPanel content = new JPanel();
-        content.setOpaque(false);
-        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
-        content.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
+        JPanel mainPanel = new JPanel();
+        mainPanel.setBackground(ColorScheme.DARK_GRAY_COLOR);
+        mainPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
+        mainPanel.setLayout(new DynamicGridLayout(0, 1, 0, 8));
 
-        content.add(centered(buildHeader()));
-        content.add(Box.createVerticalStrut(8));
-        content.add(centered(buildCurrentStepCard()));
-        content.add(Box.createVerticalStrut(8));
-        content.add(centered(buildWhyCard()));
-        content.add(Box.createVerticalStrut(8));
+        mainPanel.add(buildHeader());
+        mainPanel.add(buildCurrentStepPanel());
+        mainPanel.add(buildWhyPanel());
 
-        JScrollPane scrollPane = new JScrollPane(content);
+        // Anchor the guide to the top instead of stretching its children over
+        // the full sidebar height.
+        JPanel northWrapper = new JPanel(new BorderLayout());
+        northWrapper.setBackground(ColorScheme.DARK_GRAY_COLOR);
+        northWrapper.add(mainPanel, BorderLayout.NORTH);
+
+        JScrollPane scrollPane = new JScrollPane(northWrapper);
         scrollPane.setBorder(null);
-        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         scrollPane.getViewport().setBackground(ColorScheme.DARK_GRAY_COLOR);
-
         add(scrollPane, BorderLayout.CENTER);
-        add(buildControls(), BorderLayout.SOUTH);
 
         previousButton.addActionListener(e -> guideState.previous());
-        nextButton.addActionListener(e -> guideState.next());
         doneButton.addActionListener(e -> guideState.next());
+        nextButton.addActionListener(e -> guideState.next());
 
         guideState.addListener(() -> SwingUtilities.invokeLater(this::refresh));
         refresh();
@@ -76,163 +87,97 @@ public final class ZeroKnowledgeIronmanPanel extends PluginPanel
 
     private JPanel buildHeader()
     {
-        JPanel header = fixedWidthPanel();
-        header.setLayout(new BoxLayout(header, BoxLayout.Y_AXIS));
+        JPanel header = new JPanel(new DynamicGridLayout(0, 1, 0, 3));
         header.setOpaque(false);
 
         JLabel pluginTitle = new JLabel("IRONMAN GUIDE", SwingConstants.CENTER);
         pluginTitle.setForeground(Color.WHITE);
-        pluginTitle.setFont(pluginTitle.getFont().deriveFont(Font.BOLD, 13f));
-        pluginTitle.setAlignmentX(CENTER_ALIGNMENT);
-        pluginTitle.setMaximumSize(new Dimension(CONTENT_WIDTH, pluginTitle.getPreferredSize().height));
+        pluginTitle.setFont(pluginTitle.getFont().deriveFont(Font.BOLD, 16f));
 
-        chapterLabel.setForeground(Color.LIGHT_GRAY);
         chapterLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        chapterLabel.setAlignmentX(CENTER_ALIGNMENT);
-        chapterLabel.setMaximumSize(new Dimension(CONTENT_WIDTH, 40));
+        chapterLabel.setForeground(Color.LIGHT_GRAY);
+        chapterLabel.setFont(chapterLabel.getFont().deriveFont(Font.PLAIN, 13f));
 
-        progressLabel.setForeground(Color.GRAY);
         progressLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        progressLabel.setAlignmentX(CENTER_ALIGNMENT);
-        progressLabel.setMaximumSize(new Dimension(CONTENT_WIDTH, progressLabel.getPreferredSize().height));
+        progressLabel.setForeground(MUTED);
+        progressLabel.setFont(progressLabel.getFont().deriveFont(Font.PLAIN, 12f));
 
         progressBar.setMinimum(0);
         progressBar.setStringPainted(false);
-        progressBar.setPreferredSize(new Dimension(CONTENT_WIDTH, 10));
-        progressBar.setMinimumSize(new Dimension(CONTENT_WIDTH, 10));
-        progressBar.setMaximumSize(new Dimension(CONTENT_WIDTH, 10));
-        progressBar.setAlignmentX(CENTER_ALIGNMENT);
+        progressBar.setPreferredSize(new Dimension(0, 8));
+        progressBar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 8));
 
         header.add(pluginTitle);
-        header.add(Box.createVerticalStrut(3));
         header.add(chapterLabel);
-        header.add(Box.createVerticalStrut(2));
         header.add(progressLabel);
-        header.add(Box.createVerticalStrut(5));
         header.add(progressBar);
-
         return header;
     }
 
-    private JPanel buildCurrentStepCard()
+    private JPanel buildCurrentStepPanel()
     {
-        JPanel card = createCompactCard();
+        JPanel panel = sectionPanel();
+        panel.setLayout(new BorderLayout(0, 8));
 
-        titleLabel.setForeground(Color.WHITE);
-        titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 12f));
-        titleLabel.setAlignmentX(LEFT_ALIGNMENT);
+        stepHeaderLabel.setForeground(ACCENT);
+        stepHeaderLabel.setFont(stepHeaderLabel.getFont().deriveFont(Font.BOLD, 12f));
+        panel.add(stepHeaderLabel, BorderLayout.NORTH);
 
-        instructionLabel.setForeground(Color.LIGHT_GRAY);
-        instructionLabel.setAlignmentX(LEFT_ALIGNMENT);
-
-        card.add(sectionLabel("CURRENT STEP"));
-        card.add(Box.createVerticalStrut(7));
-        card.add(titleLabel);
-        card.add(Box.createVerticalStrut(5));
-        card.add(instructionLabel);
-
-        return card;
-    }
-
-    private JPanel buildWhyCard()
-    {
-        JPanel card = createCompactCard();
-
-        whyLabel.setForeground(new Color(180, 180, 180));
-        whyLabel.setAlignmentX(LEFT_ALIGNMENT);
-
-        card.add(sectionLabel("WHY"));
-        card.add(Box.createVerticalStrut(6));
-        card.add(whyLabel);
-
-        return card;
-    }
-
-    private JPanel buildControls()
-    {
-        JPanel outer = new JPanel(new BorderLayout());
-        outer.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        outer.setBorder(BorderFactory.createEmptyBorder(7, 8, 7, 8));
+        JPanel textPanel = new JPanel(new DynamicGridLayout(0, 1, 0, 7));
+        textPanel.setOpaque(false);
+        textPanel.add(titleText);
+        textPanel.add(instructionText);
+        panel.add(textPanel, BorderLayout.CENTER);
 
         JPanel controls = new JPanel(new GridLayout(1, 3, 6, 0));
         controls.setOpaque(false);
-        controls.setPreferredSize(new Dimension(CONTENT_WIDTH, 30));
-        controls.setMaximumSize(new Dimension(CONTENT_WIDTH, 30));
-
+        controls.setBorder(new EmptyBorder(3, 0, 0, 0));
         controls.add(previousButton);
         controls.add(doneButton);
         controls.add(nextButton);
+        panel.add(controls, BorderLayout.SOUTH);
 
-        JPanel centered = new JPanel();
-        centered.setOpaque(false);
-        centered.setLayout(new BoxLayout(centered, BoxLayout.X_AXIS));
-        centered.add(Box.createHorizontalGlue());
-        centered.add(controls);
-        centered.add(Box.createHorizontalGlue());
-
-        outer.add(centered, BorderLayout.CENTER);
-        return outer;
+        return panel;
     }
 
-    private static JPanel createCompactCard()
+    private JPanel buildWhyPanel()
     {
-        JPanel card = fixedWidthPanel();
-        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-        card.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        card.setBorder(BorderFactory.createCompoundBorder(
+        JPanel panel = sectionPanel();
+        panel.setLayout(new BorderLayout(0, 7));
+
+        JLabel heading = new JLabel("WHY THIS MATTERS");
+        heading.setForeground(ACCENT);
+        heading.setFont(heading.getFont().deriveFont(Font.BOLD, 12f));
+        panel.add(heading, BorderLayout.NORTH);
+        panel.add(whyText, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private static JPanel sectionPanel()
+    {
+        JPanel panel = new JPanel();
+        panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        panel.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(ColorScheme.MEDIUM_GRAY_COLOR),
-            BorderFactory.createEmptyBorder(9, 10, 9, 10)
+            new EmptyBorder(10, 10, 10, 10)
         ));
-        return card;
+        return panel;
     }
 
-    private static JPanel fixedWidthPanel()
+    private static JTextArea createTextArea(int style, float size, Color color)
     {
-        return new JPanel()
-        {
-            @Override
-            public Dimension getPreferredSize()
-            {
-                Dimension preferred = super.getPreferredSize();
-                return new Dimension(CONTENT_WIDTH, preferred.height);
-            }
-
-            @Override
-            public Dimension getMinimumSize()
-            {
-                Dimension preferred = getPreferredSize();
-                return new Dimension(CONTENT_WIDTH, preferred.height);
-            }
-
-            @Override
-            public Dimension getMaximumSize()
-            {
-                Dimension preferred = getPreferredSize();
-                return new Dimension(CONTENT_WIDTH, preferred.height);
-            }
-        };
-    }
-
-    private static JPanel centered(JPanel child)
-    {
-        JPanel wrapper = new JPanel();
-        wrapper.setOpaque(false);
-        wrapper.setLayout(new BoxLayout(wrapper, BoxLayout.X_AXIS));
-        wrapper.setAlignmentX(CENTER_ALIGNMENT);
-        wrapper.add(Box.createHorizontalGlue());
-        wrapper.add(child);
-        wrapper.add(Box.createHorizontalGlue());
-        wrapper.setMaximumSize(new Dimension(Integer.MAX_VALUE, child.getPreferredSize().height));
-        return wrapper;
-    }
-
-    private static JLabel sectionLabel(String text)
-    {
-        JLabel label = new JLabel(text);
-        label.setForeground(ACCENT);
-        label.setFont(label.getFont().deriveFont(Font.BOLD, 10f));
-        label.setAlignmentX(LEFT_ALIGNMENT);
-        return label;
+        JTextArea area = new JTextArea();
+        area.setEditable(false);
+        area.setFocusable(false);
+        area.setOpaque(false);
+        area.setLineWrap(true);
+        area.setWrapStyleWord(true);
+        area.setForeground(color);
+        area.setFont(area.getFont().deriveFont(style, size));
+        area.setBorder(null);
+        area.setMargin(new java.awt.Insets(0, 0, 0, 0));
+        area.setColumns(1);
+        return area;
     }
 
     private void refresh()
@@ -243,44 +188,27 @@ public final class ZeroKnowledgeIronmanPanel extends PluginPanel
             return;
         }
 
-        chapterLabel.setText(htmlCentered(escape(step.getChapter())));
-        progressLabel.setText("Step " + (guideState.getCurrentIndex() + 1) + " / " + guideState.getStepCount());
+        chapterLabel.setText(step.getChapter());
+        progressLabel.setText("Step " + (guideState.getCurrentIndex() + 1) + " of " + guideState.getStepCount());
+        stepHeaderLabel.setText("CURRENT STEP  •  " + (guideState.getCurrentIndex() + 1) + "/" + guideState.getStepCount());
+
         progressBar.setMaximum(Math.max(1, guideState.getStepCount()));
         progressBar.setValue(guideState.getCurrentIndex() + 1);
 
-        titleLabel.setText(html(escape(step.getTitle())));
-        instructionLabel.setText(html(escape(step.getInstruction())));
-        whyLabel.setText(html(escape(step.getWhy())));
+        titleText.setText(step.getTitle());
+        instructionText.setText(step.getInstruction());
+        whyText.setText(step.getWhy());
+
+        titleText.setCaretPosition(0);
+        instructionText.setCaretPosition(0);
+        whyText.setCaretPosition(0);
 
         previousButton.setEnabled(guideState.hasPrevious());
         nextButton.setEnabled(guideState.hasNext());
         doneButton.setEnabled(guideState.hasNext());
-        doneButton.setText(guideState.hasNext() ? "Done" : "Finished");
+        doneButton.setText(guideState.hasNext() ? "Complete" : "Finished");
 
         revalidate();
         repaint();
-    }
-
-    private static String html(String text)
-    {
-        return "<html><body style='width:" + TEXT_WIDTH + "px;margin:0'>" + text + "</body></html>";
-    }
-
-    private static String htmlCentered(String text)
-    {
-        return "<html><div style='width:" + TEXT_WIDTH + "px;text-align:center'>" + text + "</div></html>";
-    }
-
-    private static String escape(String value)
-    {
-        if (value == null)
-        {
-            return "";
-        }
-
-        return value
-            .replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;");
     }
 }
