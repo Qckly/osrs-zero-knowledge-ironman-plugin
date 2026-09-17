@@ -5,7 +5,10 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Locale;
+import java.util.Set;
 import net.runelite.api.Client;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
@@ -14,15 +17,28 @@ import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
 
 /**
- * Highlights the actionable choice inside production/action interfaces.
+ * Generic action-widget guidance.
  *
- * V1 supports Smithing by resolving the current guide target text against the
- * visible widget tree and drawing around the most useful clickable parent.
+ * Guide data supplies UI_TARGET. We then resolve the target against visible
+ * game widgets using text, widget name and widget actions. This covers
+ * production menus, nested buttons, spell choices, account-mode choices, etc.
  */
 public final class ActionWidgetGuidanceOverlay extends Overlay
 {
     private static final Color CYAN = new Color(0, 220, 255);
     private static final Color FILL = new Color(0, 220, 255, 35);
+
+    private static final Set<String> TOP_LEVEL_TARGETS = new HashSet<>(Arrays.asList(
+        "combat options",
+        "skills",
+        "quest list",
+        "inventory",
+        "worn equipment",
+        "prayer",
+        "magic",
+        "friends list",
+        "settings"
+    ));
 
     private final Client client;
     private final GuideState guideState;
@@ -57,108 +73,124 @@ public final class ActionWidgetGuidanceOverlay extends Overlay
         }
 
         GuideStep step = guideState.getCurrentStep();
-        if (step == null)
+        if (step == null || !hasText(step.getUiTarget()))
         {
             return null;
         }
 
-        String target = normalize(step.getTarget());
-
-        // Smithing interface: e.g. "Bronze dagger in the Smithing interface".
-        if (target.contains("smithing interface"))
+        String needle = normalize(step.getUiTarget());
+        if (TOP_LEVEL_TARGETS.contains(needle))
         {
-            Widget root = client.getWidget(InterfaceID.Smithing.UNIVERSE);
-            if (root != null && !root.isHidden())
+            return null;
+        }
+
+        Widget match = findPreferredMatch(step, needle);
+        if (match == null)
+        {
+            Widget[] roots = client.getWidgetRoots();
+            if (roots != null)
             {
-                String needle = smithingNeedle(target);
-                Widget match = findBestTextMatch(root, needle);
-                if (match != null)
+                for (Widget root : roots)
                 {
-                    drawWidget(graphics, expandToActionParent(match));
+                    match = findBestMatch(root, needle);
+                    if (match != null)
+                    {
+                        break;
+                    }
                 }
             }
+        }
+
+        if (match != null)
+        {
+            drawWidget(graphics, expandToActionParent(match));
         }
 
         return null;
     }
 
-    private static String smithingNeedle(String target)
+    private Widget findPreferredMatch(GuideStep step, String needle)
     {
-        String cleaned = target
-            .replace("in the smithing interface", "")
-            .replace("smithing interface", "")
-            .replace("bronze ", "")
-            .trim();
+        String target = normalize(step.getTarget());
 
-        return cleaned.isEmpty() ? "dagger" : cleaned;
+        if (target.contains("smithing interface"))
+        {
+            return findBestMatch(client.getWidget(InterfaceID.Smithing.UNIVERSE), needle);
+        }
+
+        return null;
     }
 
-    private Widget findBestTextMatch(Widget widget, String needle)
+    private Widget findBestMatch(Widget widget, String needle)
     {
         if (widget == null || widget.isHidden())
         {
             return null;
         }
 
-        String text = normalize(stripTags(widget.getText()));
-        if (!text.isEmpty() && (text.equals(needle) || text.contains(needle)))
+        if (matchesWidget(widget, needle))
         {
             return widget;
         }
 
-        Widget[] children = widget.getChildren();
-        if (children != null)
+        Widget match = findIn(widget.getChildren(), needle);
+        if (match != null) return match;
+
+        match = findIn(widget.getDynamicChildren(), needle);
+        if (match != null) return match;
+
+        match = findIn(widget.getStaticChildren(), needle);
+        if (match != null) return match;
+
+        return findIn(widget.getNestedChildren(), needle);
+    }
+
+    private Widget findIn(Widget[] widgets, String needle)
+    {
+        if (widgets == null)
         {
-            for (Widget child : children)
-            {
-                Widget match = findBestTextMatch(child, needle);
-                if (match != null)
-                {
-                    return match;
-                }
-            }
+            return null;
         }
 
-        Widget[] dynamicChildren = widget.getDynamicChildren();
-        if (dynamicChildren != null)
+        for (Widget child : widgets)
         {
-            for (Widget child : dynamicChildren)
+            Widget match = findBestMatch(child, needle);
+            if (match != null)
             {
-                Widget match = findBestTextMatch(child, needle);
-                if (match != null)
-                {
-                    return match;
-                }
-            }
-        }
-
-        Widget[] staticChildren = widget.getStaticChildren();
-        if (staticChildren != null)
-        {
-            for (Widget child : staticChildren)
-            {
-                Widget match = findBestTextMatch(child, needle);
-                if (match != null)
-                {
-                    return match;
-                }
-            }
-        }
-
-        Widget[] nestedChildren = widget.getNestedChildren();
-        if (nestedChildren != null)
-        {
-            for (Widget child : nestedChildren)
-            {
-                Widget match = findBestTextMatch(child, needle);
-                if (match != null)
-                {
-                    return match;
-                }
+                return match;
             }
         }
 
         return null;
+    }
+
+    private static boolean matchesWidget(Widget widget, String needle)
+    {
+        if (containsNeedle(widget.getText(), needle) || containsNeedle(widget.getName(), needle))
+        {
+            return true;
+        }
+
+        String[] actions = widget.getActions();
+        if (actions != null)
+        {
+            for (String action : actions)
+            {
+                if (containsNeedle(action, needle))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static boolean containsNeedle(String value, String needle)
+    {
+        String normalized = normalize(stripTags(value));
+        return !normalized.isEmpty() &&
+            (normalized.equals(needle) || normalized.contains(needle) || needle.contains(normalized));
     }
 
     private Widget expandToActionParent(Widget widget)
@@ -174,14 +206,14 @@ public final class ActionWidgetGuidanceOverlay extends Overlay
                 continue;
             }
 
-            // Production choices are typically around 60-120 px wide/high.
-            // Stop before climbing into the whole Smithing window.
-            if (bounds.width > 150 || bounds.height > 120)
+            // Avoid highlighting an entire modal/window instead of the action.
+            if (bounds.width > 180 || bounds.height > 140)
             {
                 break;
             }
 
-            if (bestBounds == null || bounds.width >= bestBounds.width || bounds.height >= bestBounds.height)
+            if (bestBounds == null ||
+                (bounds.width >= bestBounds.width && bounds.height >= bestBounds.height))
             {
                 best = parent;
                 bestBounds = bounds;
@@ -221,6 +253,11 @@ public final class ActionWidgetGuidanceOverlay extends Overlay
         graphics.setColor(CYAN);
         graphics.setStroke(new BasicStroke(3f));
         graphics.drawRect(bounds.x, bounds.y, bounds.width - 1, bounds.height - 1);
+    }
+
+    private static boolean hasText(String value)
+    {
+        return value != null && !value.trim().isEmpty();
     }
 
     private static String stripTags(String value)
