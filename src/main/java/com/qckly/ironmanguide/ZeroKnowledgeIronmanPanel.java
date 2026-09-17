@@ -35,9 +35,9 @@ public final class ZeroKnowledgeIronmanPanel extends PluginPanel
     private final JLabel chapterLabel = new JLabel();
     private final JLabel progressLabel = new JLabel();
     private final JLabel stepHeaderLabel = new JLabel();
-    private final JTextArea titleText = createTextArea(Font.BOLD, 14f, Color.WHITE);
-    private final JTextArea instructionText = createTextArea(Font.PLAIN, 12.5f, Color.LIGHT_GRAY);
-    private final JTextArea whyText = createTextArea(Font.PLAIN, 12.5f, MUTED);
+    private final JTextArea titleText = createTextArea(Font.BOLD, 16f, Color.WHITE);
+    private final JTextArea instructionText = createTextArea(Font.PLAIN, 14f, Color.LIGHT_GRAY);
+    private final JTextArea whyText = createTextArea(Font.PLAIN, 13.5f, MUTED);
     private final JProgressBar progressBar = new JProgressBar();
 
     private final JButton previousButton = new JButton("Back");
@@ -75,15 +75,15 @@ public final class ZeroKnowledgeIronmanPanel extends PluginPanel
 
         JLabel pluginTitle = new JLabel("IRONMAN GUIDE", SwingConstants.CENTER);
         pluginTitle.setForeground(Color.WHITE);
-        pluginTitle.setFont(pluginTitle.getFont().deriveFont(Font.BOLD, 15f));
+        pluginTitle.setFont(pluginTitle.getFont().deriveFont(Font.BOLD, 16f));
 
         chapterLabel.setHorizontalAlignment(SwingConstants.CENTER);
         chapterLabel.setForeground(Color.LIGHT_GRAY);
-        chapterLabel.setFont(chapterLabel.getFont().deriveFont(Font.PLAIN, 12f));
+        chapterLabel.setFont(chapterLabel.getFont().deriveFont(Font.PLAIN, 13f));
 
         progressLabel.setHorizontalAlignment(SwingConstants.CENTER);
         progressLabel.setForeground(MUTED);
-        progressLabel.setFont(progressLabel.getFont().deriveFont(Font.PLAIN, 11f));
+        progressLabel.setFont(progressLabel.getFont().deriveFont(Font.PLAIN, 12f));
 
         progressBar.setMinimum(0);
         progressBar.setStringPainted(false);
@@ -103,7 +103,7 @@ public final class ZeroKnowledgeIronmanPanel extends PluginPanel
         panel.setLayout(new DynamicGridLayout(0, 1, 0, 8));
 
         stepHeaderLabel.setForeground(ACCENT);
-        stepHeaderLabel.setFont(stepHeaderLabel.getFont().deriveFont(Font.BOLD, 11f));
+        stepHeaderLabel.setFont(stepHeaderLabel.getFont().deriveFont(Font.BOLD, 13f));
         panel.add(stepHeaderLabel);
 
         panel.add(titleText);
@@ -127,7 +127,7 @@ public final class ZeroKnowledgeIronmanPanel extends PluginPanel
 
         JLabel heading = new JLabel("WHY THIS MATTERS");
         heading.setForeground(ACCENT);
-        heading.setFont(heading.getFont().deriveFont(Font.BOLD, 11f));
+        heading.setFont(heading.getFont().deriveFont(Font.BOLD, 13f));
         panel.add(heading);
         panel.add(whyText);
         return panel;
