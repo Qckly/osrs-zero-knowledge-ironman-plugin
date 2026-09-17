@@ -1,3 +1,6 @@
+import java.util.Collections;
+import java.util.List;
+
 package com.qckly.ironmanguide;
 
 public final class GuideStep
@@ -11,11 +14,12 @@ public final class GuideStep
     private final String requirement;
     private final String recommendedItems;
     private final String completeWhen;
+    private final List<GuideWaypoint> waypoints;
     private final boolean optional;
 
     public GuideStep(String id, String chapter, String title, String instruction, String why)
     {
-        this(id, chapter, title, instruction, why, null, null, null, null, false);
+        this(id, chapter, title, instruction, why, null, null, null, null, Collections.emptyList(), false);
     }
 
     public GuideStep(
@@ -28,6 +32,7 @@ public final class GuideStep
         String requirement,
         String recommendedItems,
         String completeWhen,
+        List<GuideWaypoint> waypoints,
         boolean optional)
     {
         this.id = id;
@@ -39,6 +44,7 @@ public final class GuideStep
         this.requirement = requirement;
         this.recommendedItems = recommendedItems;
         this.completeWhen = completeWhen;
+        this.waypoints = waypoints == null ? Collections.emptyList() : Collections.unmodifiableList(waypoints);
         this.optional = optional;
     }
 
@@ -85,6 +91,11 @@ public final class GuideStep
     public String getCompleteWhen()
     {
         return completeWhen;
+    }
+
+    public List<GuideWaypoint> getWaypoints()
+    {
+        return waypoints;
     }
 
     public boolean isOptional()
