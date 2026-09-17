@@ -13,9 +13,7 @@ import net.runelite.client.ui.overlay.components.LineComponent;
 import net.runelite.client.ui.overlay.components.TitleComponent;
 
 /**
- * Compact in-game objective overlay inspired by Quest Helper's information hierarchy.
- * The sidebar contains the full explanation; this box only tells the player what to
- * do now and what is needed for the current step.
+ * Compact in-game objective overlay driven by structured guide data.
  */
 public final class ZeroKnowledgeIronmanOverlay extends OverlayPanel
 {
@@ -24,6 +22,7 @@ public final class ZeroKnowledgeIronmanOverlay extends OverlayPanel
     private static final Color ACTION = new Color(255, 170, 0);
     private static final Color LABEL = new Color(220, 220, 220);
     private static final Color REQUIREMENT = new Color(255, 90, 90);
+    private static final Color TARGET = new Color(235, 235, 235);
     private static final Color MUTED = new Color(165, 165, 165);
 
     private static final int OVERLAY_WIDTH = 205;
@@ -60,7 +59,6 @@ public final class ZeroKnowledgeIronmanOverlay extends OverlayPanel
 
         panelComponent.getChildren().clear();
 
-        // Main objective title.
         panelComponent.getChildren().add(
             TitleComponent.builder()
                 .text(step.getTitle())
@@ -68,9 +66,7 @@ public final class ZeroKnowledgeIronmanOverlay extends OverlayPanel
                 .build()
         );
 
-        // One concise immediate-action sentence in orange.
-        String actionText = firstSentence(step.getInstruction());
-        for (String line : wrap(actionText, WRAP_AT))
+        for (String line : wrap(firstSentence(step.getInstruction()), WRAP_AT))
         {
             panelComponent.getChildren().add(
                 LineComponent.builder()
@@ -80,28 +76,52 @@ public final class ZeroKnowledgeIronmanOverlay extends OverlayPanel
             );
         }
 
-        // Visible Quest Helper-style requirements section. These are intentionally
-        // lightweight until GuideStep gains structured requirement/item fields.
-        panelComponent.getChildren().add(
-            LineComponent.builder()
-                .left("Requirements:")
-                .leftColor(LABEL)
-                .build()
-        );
-
-        for (String requirement : requirementsFor(step))
+        if (hasText(step.getTarget()))
         {
             panelComponent.getChildren().add(
                 LineComponent.builder()
-                    .left(requirement)
-                    .leftColor(REQUIREMENT)
+                    .left("Target:")
+                    .leftColor(LABEL)
                     .build()
             );
+
+            for (String line : wrap(step.getTarget(), WRAP_AT))
+            {
+                panelComponent.getChildren().add(
+                    LineComponent.builder()
+                        .left(line)
+                        .leftColor(TARGET)
+                        .build()
+                );
+            }
+        }
+
+        if (hasText(step.getRequirement()))
+        {
+            panelComponent.getChildren().add(
+                LineComponent.builder()
+                    .left("Requirements:")
+                    .leftColor(LABEL)
+                    .build()
+            );
+
+            for (String requirement : step.getRequirement().split("\\n"))
+            {
+                for (String line : wrap(requirement, WRAP_AT))
+                {
+                    panelComponent.getChildren().add(
+                        LineComponent.builder()
+                            .left(line)
+                            .leftColor(REQUIREMENT)
+                            .build()
+                    );
+                }
+            }
         }
 
         panelComponent.getChildren().add(
             LineComponent.builder()
-                .left("Step " + (guideState.getCurrentIndex() + 1) + " / " + guideState.getStepCount())
+                .left((step.isOptional() ? "Optional • " : "") + "Step " + (guideState.getCurrentIndex() + 1) + " / " + guideState.getStepCount())
                 .leftColor(MUTED)
                 .build()
         );
@@ -109,42 +129,9 @@ public final class ZeroKnowledgeIronmanOverlay extends OverlayPanel
         return super.render(graphics);
     }
 
-    private static List<String> requirementsFor(GuideStep step)
+    private static boolean hasText(String value)
     {
-        List<String> requirements = new ArrayList<>();
-
-        switch (step.getId())
-        {
-            case "ch01-step-002":
-                requirements.add("Standard Ironman selected");
-                break;
-            case "ch01-step-005":
-                requirements.add("1 x Spade");
-                requirements.add("1 x Hammer");
-                requirements.add("Coins");
-                break;
-            case "ch01-step-010":
-                requirements.add("7 x Normal logs");
-                requirements.add("4 x Ashes");
-                break;
-            case "ch01-step-011":
-                requirements.add("15 Firemaking");
-                break;
-            case "ch01-step-012":
-                requirements.add("Knife");
-                requirements.add("~1,000 arrow shafts");
-                break;
-            case "ch01-step-016":
-                requirements.add("Spade");
-                requirements.add("Basic food");
-                requirements.add("Coins");
-                break;
-            default:
-                requirements.add("None");
-                break;
-        }
-
-        return requirements;
+        return value != null && !value.trim().isEmpty();
     }
 
     private static String firstSentence(String text)
