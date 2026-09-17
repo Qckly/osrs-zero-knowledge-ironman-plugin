@@ -75,7 +75,12 @@ public final class ZeroKnowledgeIronmanPanel extends PluginPanel
 
         if (hasText(step.getRequirement()))
         {
-            add(buildRequirementsBlock(step.getRequirement()));
+            add(buildItemListBlock("Item requirements:", step.getRequirement(), true));
+        }
+
+        if (hasText(step.getRecommendedItems()))
+        {
+            add(buildItemListBlock("Recommended items:", step.getRecommendedItems(), false));
         }
 
         if (hasText(step.getCompleteWhen()))
@@ -177,14 +182,13 @@ public final class ZeroKnowledgeIronmanPanel extends PluginPanel
         return panel;
     }
 
-    private JPanel buildRequirementsBlock(String requirement)
+    private JPanel buildItemListBlock(String heading, String items, boolean required)
     {
         JPanel panel = questHelperBlock();
-        panel.setLayout(new DynamicGridLayout(0, 1, 0, 5));
-        panel.add(label("Requirements:", Color.LIGHT_GRAY, Font.PLAIN, 13f));
+        panel.setLayout(new DynamicGridLayout(0, 1, 0, 3));
+        panel.add(label(heading, Color.LIGHT_GRAY, Font.PLAIN, 13f));
 
-        String[] parts = requirement.split("\\+|\\n");
-        for (String rawPart : parts)
+        for (String rawPart : splitItems(items))
         {
             String part = rawPart.trim();
             if (part.isEmpty())
@@ -195,19 +199,56 @@ public final class ZeroKnowledgeIronmanPanel extends PluginPanel
             RequirementEvaluator.Status status =
                 RequirementEvaluator.evaluate(part, tutorialStateTracker);
 
-            Color color = status == RequirementEvaluator.Status.SATISFIED
-                ? GREEN
-                : status == RequirementEvaluator.Status.UNSATISFIED
-                    ? RED
-                    : Color.LIGHT_GRAY;
+            Color color;
+            if (status == RequirementEvaluator.Status.SATISFIED)
+            {
+                color = GREEN;
+            }
+            else if (required && status == RequirementEvaluator.Status.UNSATISFIED)
+            {
+                color = RED;
+            }
+            else
+            {
+                color = required ? RED : ORANGE_TEXT;
+            }
 
-            String prefix = status == RequirementEvaluator.Status.SATISFIED ? "✓ " : "";
+            String display = formatItemRequirement(part);
             JPanel strip = valueStripPanel();
-            strip.add(textArea(prefix + part, color, Font.BOLD, 13.5f), BorderLayout.CENTER);
+            strip.add(textArea(display, color, Font.BOLD, 13.5f), BorderLayout.CENTER);
             panel.add(strip);
         }
 
         return panel;
+    }
+
+    private static String[] splitItems(String value)
+    {
+        return value == null
+            ? new String[0]
+            : value.split("(?i)\\s*(?:\\+|/|\\bor\\b|\\band\\b|\\n)\\s*");
+    }
+
+    private static String formatItemRequirement(String raw)
+    {
+        String text = raw == null ? "" : raw.trim();
+        text = text
+            .replaceAll("(?i)\\bin (?:your )?inventory\\b", "")
+            .replaceAll("(?i)\\bequipped\\b", "")
+            .replaceAll("(?i)\\bavailable\\b", "")
+            .trim();
+
+        if (text.matches("^\\d+\\s*x\\s+.*"))
+        {
+            return text;
+        }
+
+        if (text.matches("^\\d+\\s+.*"))
+        {
+            return text.replaceFirst("^(\\d+)\\s+", "$1 x ");
+        }
+
+        return "1 x " + text;
     }
 
     private JPanel buildSingleValueBlock(String heading, String value, Color valueColor, int valueStyle)
