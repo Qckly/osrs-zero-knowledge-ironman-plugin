@@ -11,11 +11,12 @@ Write-Host 'Zero Knowledge Ironman Guide - RuneLite dev launcher' -ForegroundCol
 
 function Get-JavaMajorVersion([string]$javaExe) {
     try {
-        $line = (& $javaExe -version 2>&1 | Select-Object -First 1).ToString()
-        if ($line -match 'version\s+"1\.(\d+)') {
+        $lines = & $javaExe -version 2>&1
+        $text = ($lines | Out-String)
+        if ($text -match 'version\s+"1\.(\d+)') {
             return [int]$Matches[1]
         }
-        if ($line -match 'version\s+"(\d+)') {
+        if ($text -match 'version\s+"(\d+)') {
             return [int]$Matches[1]
         }
     }
@@ -24,65 +25,131 @@ function Get-JavaMajorVersion([string]$javaExe) {
     return 0
 }
 
-$javaExe = $null
+function Test-JdkHome([string]$home) {
+    if (-not $home -or -not (Test-Path $home)) {
+        return $null
+    }
 
-# Prefer JAVA_HOME if it already points to a suitable JDK.
+    $java = Join-Path $home 'bin\java.exe'
+    $javac = Join-Path $home 'bin\javac.exe'
+    if ((Test-Path $java) -and (Test-Path $javac) -and ((Get-JavaMajorVersion $java) -ge 11)) {
+        return $java
+    }
+
+    return $null
+}
+
+$javaExe = $null
+$javaHome = $null
+$candidateHomes = New-Object System.Collections.Generic.List[string]
+
+# 1) Existing JAVA_HOME.
 if ($env:JAVA_HOME) {
-    $candidate = Join-Path $env:JAVA_HOME 'bin\java.exe'
-    if ((Test-Path $candidate) -and ((Get-JavaMajorVersion $candidate) -ge 11)) {
-        $javaExe = $candidate
+    $candidateHomes.Add($env:JAVA_HOME)
+}
+
+# 2) Registry locations used by Temurin/Adoptium and other JDK vendors.
+$registryPatterns = @(
+    'HKLM:\SOFTWARE\Eclipse Adoptium\JDK\*\hotspot\MSI',
+    'HKLM:\SOFTWARE\WOW6432Node\Eclipse Adoptium\JDK\*\hotspot\MSI',
+    'HKLM:\SOFTWARE\AdoptOpenJDK\JDK\*\hotspot\MSI',
+    'HKLM:\SOFTWARE\JavaSoft\JDK\*',
+    'HKLM:\SOFTWARE\JavaSoft\Java Development Kit\*'
+)
+
+foreach ($pattern in $registryPatterns) {
+    try {
+        foreach ($key in Get-ItemProperty -Path $pattern -ErrorAction SilentlyContinue) {
+            foreach ($propertyName in @('Path', 'JavaHome', 'InstallationPath')) {
+                $value = $key.$propertyName
+                if ($value) {
+                    $candidateHomes.Add([string]$value)
+                }
+            }
+        }
+    }
+    catch {
     }
 }
 
-# Look for Eclipse Temurin / Adoptium JDK installations even when PATH still points to Java 8.
-if (-not $javaExe) {
-    $jdkRoots = @(
-        (Join-Path $env:ProgramFiles 'Eclipse Adoptium'),
-        (Join-Path $env:ProgramFiles 'AdoptOpenJDK'),
-        (Join-Path $env:ProgramFiles 'Java')
-    )
+# 3) Common installation roots. Search recursively because vendor folder layouts differ.
+$roots = @()
+if ($env:ProgramFiles) { $roots += $env:ProgramFiles }
+if (${env:ProgramFiles(x86)}) { $roots += ${env:ProgramFiles(x86)} }
+if ($env:LOCALAPPDATA) { $roots += $env:LOCALAPPDATA }
 
-    foreach ($root in $jdkRoots) {
-        if (-not (Test-Path $root)) {
+$vendorFolders = @(
+    'Eclipse Adoptium',
+    'AdoptOpenJDK',
+    'Java',
+    'Microsoft',
+    'Zulu',
+    'Amazon Corretto'
+)
+
+foreach ($root in $roots | Select-Object -Unique) {
+    foreach ($vendor in $vendorFolders) {
+        $vendorRoot = Join-Path $root $vendor
+        if (-not (Test-Path $vendorRoot)) {
             continue
         }
 
-        $jdkDirs = Get-ChildItem -Path $root -Directory -ErrorAction SilentlyContinue |
-            Sort-Object Name -Descending
-
-        foreach ($jdkDir in $jdkDirs) {
-            $candidate = Join-Path $jdkDir.FullName 'bin\java.exe'
-            if ((Test-Path $candidate) -and ((Get-JavaMajorVersion $candidate) -ge 11)) {
-                $javaExe = $candidate
-                $env:JAVA_HOME = $jdkDir.FullName
-                break
-            }
+        try {
+            Get-ChildItem -Path $vendorRoot -Filter javac.exe -File -Recurse -ErrorAction SilentlyContinue |
+                ForEach-Object {
+                    $binDir = Split-Path -Parent $_.FullName
+                    $home = Split-Path -Parent $binDir
+                    $candidateHomes.Add($home)
+                }
         }
-
-        if ($javaExe) {
-            break
+        catch {
         }
     }
 }
 
-# Finally try whatever java.exe Windows currently resolves from PATH.
+# 4) Try all discovered JDK homes, preferring the highest Java version.
+$validJdks = @()
+foreach ($home in $candidateHomes | Where-Object { $_ } | Select-Object -Unique) {
+    $candidate = Test-JdkHome $home
+    if ($candidate) {
+        $validJdks += [PSCustomObject]@{
+            Home = $home
+            Java = $candidate
+            Version = Get-JavaMajorVersion $candidate
+        }
+    }
+}
+
+if ($validJdks.Count -gt 0) {
+    $selected = $validJdks | Sort-Object Version -Descending | Select-Object -First 1
+    $javaExe = $selected.Java
+    $javaHome = $selected.Home
+}
+
+# 5) Last fallback: java/javac currently on PATH.
 if (-not $javaExe) {
     $javaCommand = Get-Command java.exe -ErrorAction SilentlyContinue
-    if ($javaCommand -and ((Get-JavaMajorVersion $javaCommand.Source) -ge 11)) {
+    $javacCommand = Get-Command javac.exe -ErrorAction SilentlyContinue
+    if ($javaCommand -and $javacCommand -and ((Get-JavaMajorVersion $javaCommand.Source) -ge 11)) {
         $javaExe = $javaCommand.Source
-        $env:JAVA_HOME = Split-Path -Parent (Split-Path -Parent $javaExe)
+        $javaHome = Split-Path -Parent (Split-Path -Parent $javaExe)
     }
 }
 
 if (-not $javaExe) {
     Write-Host ''
     Write-Host 'Java 11 or newer JDK was not found.' -ForegroundColor Red
-    Write-Host 'Temurin JDK 11 may be installed, but the launcher could not locate it.' -ForegroundColor Yellow
-    Write-Host 'Expected location is usually under C:\Program Files\Eclipse Adoptium\.' -ForegroundColor Yellow
+    Write-Host 'Installed JDK locations checked:' -ForegroundColor Yellow
+    foreach ($home in $candidateHomes | Where-Object { $_ } | Select-Object -Unique) {
+        Write-Host "  $home" -ForegroundColor DarkGray
+    }
+    Write-Host ''
+    Write-Host 'Diagnostic command:' -ForegroundColor Yellow
+    Write-Host '  Get-ChildItem "C:\Program Files" -Filter javac.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName' -ForegroundColor Gray
     exit 1
 }
 
-$env:JAVA_HOME = Split-Path -Parent (Split-Path -Parent $javaExe)
+$env:JAVA_HOME = $javaHome
 $env:Path = (Join-Path $env:JAVA_HOME 'bin') + ';' + $env:Path
 
 $javaVersion = & $javaExe -version 2>&1
