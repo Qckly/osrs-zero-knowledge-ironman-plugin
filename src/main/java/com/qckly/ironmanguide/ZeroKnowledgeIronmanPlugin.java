@@ -107,6 +107,7 @@ public class ZeroKnowledgeIronmanPlugin extends Plugin
 
         dialogueGuidanceOverlay = new DialogueGuidanceOverlay(
             client,
+            guideState,
             config,
             tutorialStateTracker
         );
