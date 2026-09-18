@@ -37,7 +37,8 @@ public final class ActionWidgetGuidanceOverlay extends Overlay
         "prayer",
         "magic",
         "friends list",
-        "settings"
+        "settings",
+        "account management"
     ));
 
     private final Client client;
@@ -166,20 +167,73 @@ public final class ActionWidgetGuidanceOverlay extends Overlay
 
     private static boolean matchesWidget(Widget widget, String needle)
     {
-        if (containsNeedle(widget.getText(), needle) || containsNeedle(widget.getName(), needle))
+        // Action/name matches are strong signals and are safe for buttons,
+        // spells, production choices and other clickable interface elements.
+        if (containsNeedle(widget.getName(), needle) || actionsContain(widget, needle))
         {
             return true;
         }
 
-        String[] actions = widget.getActions();
-        if (actions != null)
+        // Plain text alone is not enough: NPC/dialogue text frequently mentions
+        // interface names (for example "Account Management") and must never be
+        // treated as a clickable UI target. Only accept a text match when this
+        // widget or a small parent widget is actually actionable.
+        if (containsNeedle(widget.getText(), needle))
         {
-            for (String action : actions)
+            if (hasActions(widget))
             {
-                if (containsNeedle(action, needle))
+                return true;
+            }
+
+            Widget parent = widget.getParent();
+            if (parent != null)
+            {
+                Rectangle bounds = safeBounds(parent);
+                if (bounds != null
+                    && bounds.width <= 220
+                    && bounds.height <= 160
+                    && hasActions(parent))
                 {
                     return true;
                 }
+            }
+        }
+
+        return false;
+    }
+
+    private static boolean actionsContain(Widget widget, String needle)
+    {
+        String[] actions = widget.getActions();
+        if (actions == null)
+        {
+            return false;
+        }
+
+        for (String action : actions)
+        {
+            if (containsNeedle(action, needle))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static boolean hasActions(Widget widget)
+    {
+        String[] actions = widget.getActions();
+        if (actions == null)
+        {
+            return false;
+        }
+
+        for (String action : actions)
+        {
+            if (action != null && !action.trim().isEmpty())
+            {
+                return true;
             }
         }
 
