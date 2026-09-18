@@ -1,10 +1,7 @@
 package com.qckly.ironmanguide;
 
-import java.awt.BasicStroke;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
-import java.awt.Rectangle;
 import java.util.Locale;
 import net.runelite.api.Client;
 import net.runelite.api.gameval.InterfaceID;
@@ -14,17 +11,14 @@ import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
 
 /**
- * Highlights actionable dialogue UI.
+ * Quest-Helper-style dialogue guidance.
  *
- * If the current guide step provides DIALOGUE_CHOICE, only the matching choice
- * is highlighted. Otherwise all visible dialogue options are highlighted.
- * "Click here to continue" remains supported as a universal continuation action.
+ * Instead of drawing a large rectangle around dialogue rows, the actionable
+ * dialogue text itself is recoloured. If DIALOGUE_CHOICE is supplied only that
+ * option is highlighted. "Click here to continue" is highlighted universally.
  */
 public final class DialogueGuidanceOverlay extends Overlay
 {
-    private static final Color CYAN = new Color(0, 220, 255);
-    private static final Color FILL = new Color(0, 220, 255, 30);
-
     private final Client client;
     private final GuideState guideState;
     private final ZeroKnowledgeIronmanConfig config;
@@ -57,16 +51,16 @@ public final class DialogueGuidanceOverlay extends Overlay
             return null;
         }
 
-        boolean drewOptions = drawDialogueOptions(graphics);
-        if (!drewOptions)
+        boolean highlightedOptions = highlightDialogueOptions();
+        if (!highlightedOptions)
         {
-            drawContinueWidgets(graphics);
+            highlightContinueWidgets();
         }
 
         return null;
     }
 
-    private boolean drawDialogueOptions(Graphics2D graphics)
+    private boolean highlightDialogueOptions()
     {
         Widget options = client.getWidget(InterfaceID.Chatmenu.OPTIONS);
         if (!isVisible(options))
@@ -77,7 +71,7 @@ public final class DialogueGuidanceOverlay extends Overlay
         GuideStep step = guideState.getCurrentStep();
         String desired = step == null ? "" : normalize(step.getDialogueChoice());
 
-        boolean drew = false;
+        boolean highlighted = false;
         Widget[] children = options.getChildren();
         if (children == null)
         {
@@ -100,14 +94,14 @@ public final class DialogueGuidanceOverlay extends Overlay
                 }
             }
 
-            drawWidgetBounds(graphics, child);
-            drew = true;
+            highlightText(child);
+            highlighted = true;
         }
 
-        return drew;
+        return highlighted;
     }
 
-    private void drawContinueWidgets(Graphics2D graphics)
+    private void highlightContinueWidgets()
     {
         Widget[] roots = client.getWidgetRoots();
         if (roots == null)
@@ -117,11 +111,11 @@ public final class DialogueGuidanceOverlay extends Overlay
 
         for (Widget root : roots)
         {
-            findAndDrawContinue(graphics, root);
+            findAndHighlightContinue(root);
         }
     }
 
-    private void findAndDrawContinue(Graphics2D graphics, Widget widget)
+    private void findAndHighlightContinue(Widget widget)
     {
         if (widget == null || widget.isHidden())
         {
@@ -131,16 +125,16 @@ public final class DialogueGuidanceOverlay extends Overlay
         String text = widget.getText();
         if (hasText(text) && normalize(stripTags(text)).contains("click here to continue"))
         {
-            drawWidgetBounds(graphics, widget);
+            highlightText(widget);
         }
 
-        recurse(graphics, widget.getChildren());
-        recurse(graphics, widget.getDynamicChildren());
-        recurse(graphics, widget.getStaticChildren());
-        recurse(graphics, widget.getNestedChildren());
+        recurse(widget.getChildren());
+        recurse(widget.getDynamicChildren());
+        recurse(widget.getStaticChildren());
+        recurse(widget.getNestedChildren());
     }
 
-    private void recurse(Graphics2D graphics, Widget[] widgets)
+    private void recurse(Widget[] widgets)
     {
         if (widgets == null)
         {
@@ -149,24 +143,13 @@ public final class DialogueGuidanceOverlay extends Overlay
 
         for (Widget child : widgets)
         {
-            findAndDrawContinue(graphics, child);
+            findAndHighlightContinue(child);
         }
     }
 
-    private static void drawWidgetBounds(Graphics2D graphics, Widget widget)
+    private void highlightText(Widget widget)
     {
-        Rectangle bounds = widget.getBounds();
-        if (bounds == null || bounds.width <= 0 || bounds.height <= 0)
-        {
-            return;
-        }
-
-        graphics.setColor(FILL);
-        graphics.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
-
-        graphics.setColor(CYAN);
-        graphics.setStroke(new BasicStroke(2f));
-        graphics.drawRect(bounds.x, bounds.y, bounds.width - 1, bounds.height - 1);
+        widget.setTextColor(config.textHighlightColor().getRGB());
     }
 
     private static boolean isVisible(Widget widget)
