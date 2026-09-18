@@ -85,8 +85,10 @@ public final class ActionWidgetGuidanceOverlay extends Overlay
             return null;
         }
 
+        boolean spellTarget = isSpellTarget(step, needle);
+
         Widget match = findPreferredMatch(step, needle);
-        if (match == null)
+        if (match == null && !spellTarget)
         {
             Widget[] roots = client.getWidgetRoots();
             if (roots != null)
@@ -104,7 +106,7 @@ public final class ActionWidgetGuidanceOverlay extends Overlay
 
         if (match != null)
         {
-            drawWidget(graphics, expandToActionParent(match));
+            drawWidget(graphics, spellTarget ? match : expandToActionParent(match));
         }
 
         return null;
@@ -119,7 +121,104 @@ public final class ActionWidgetGuidanceOverlay extends Overlay
             return findBestMatch(client.getWidget(InterfaceID.Smithing.UNIVERSE), needle);
         }
 
+        if (target.contains("magic interface") || isSpellTarget(step, needle))
+        {
+            return findExactActionMatch(
+                client.getWidget(InterfaceID.MagicSpellbook.UNIVERSE),
+                needle
+            );
+        }
+
         return null;
+    }
+
+    private boolean isSpellTarget(GuideStep step, String needle)
+    {
+        String target = normalize(step.getTarget());
+        String title = normalize(step.getTitle());
+
+        return target.contains("magic interface")
+            || title.contains("cast ")
+            || title.contains("teleport")
+            || needle.contains("strike")
+            || needle.contains("bolt")
+            || needle.contains("blast")
+            || needle.contains("wave")
+            || needle.contains("surge")
+            || needle.contains("teleport");
+    }
+
+    private Widget findExactActionMatch(Widget widget, String needle)
+    {
+        if (widget == null || widget.isHidden())
+        {
+            return null;
+        }
+
+        if (exactWidgetMatch(widget, needle))
+        {
+            return widget;
+        }
+
+        Widget match = findExactIn(widget.getChildren(), needle);
+        if (match != null) return match;
+
+        match = findExactIn(widget.getDynamicChildren(), needle);
+        if (match != null) return match;
+
+        match = findExactIn(widget.getStaticChildren(), needle);
+        if (match != null) return match;
+
+        return findExactIn(widget.getNestedChildren(), needle);
+    }
+
+    private Widget findExactIn(Widget[] widgets, String needle)
+    {
+        if (widgets == null)
+        {
+            return null;
+        }
+
+        for (Widget child : widgets)
+        {
+            Widget match = findExactActionMatch(child, needle);
+            if (match != null)
+            {
+                return match;
+            }
+        }
+
+        return null;
+    }
+
+    private static boolean exactWidgetMatch(Widget widget, String needle)
+    {
+        String name = normalize(stripTags(widget.getName()));
+        String text = normalize(stripTags(widget.getText()));
+
+        if (needle.equals(name) || needle.equals(text))
+        {
+            return true;
+        }
+
+        String[] actions = widget.getActions();
+        if (actions == null)
+        {
+            return false;
+        }
+
+        for (String action : actions)
+        {
+            String normalizedAction = normalize(stripTags(action));
+            if (normalizedAction.equals(needle)
+                || normalizedAction.equals("cast " + needle)
+                || normalizedAction.endsWith(" " + needle))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private Widget findBestMatch(Widget widget, String needle)
