@@ -95,24 +95,30 @@ public final class PathGuidanceOverlay extends Overlay
             return null;
         }
 
-        if (!isLoaded(target))
-        {
-            // For distant destinations the guide should provide a waypoint that
-            // lies inside the current scene. Do not fake a straight-line route.
-            WorldPoint sceneWaypoint = resolveLoadedWaypoint(step, start);
-            if (sceneWaypoint == null)
-            {
-                clearCache();
-                return null;
-            }
-            target = sceneWaypoint;
-        }
+        boolean distantTarget = !isLoaded(target);
 
         if (!start.equals(cachedStart) || !target.equals(cachedTarget))
         {
             cachedStart = start;
             cachedTarget = target;
-            cachedPath = findPath(start, target);
+
+            if (distantTarget)
+            {
+                WorldPoint sceneWaypoint = resolveLoadedWaypoint(step, start);
+
+                if (sceneWaypoint != null)
+                {
+                    cachedPath = findPath(start, sceneWaypoint);
+                }
+                else
+                {
+                    cachedPath = findPathTowardDistantTarget(start, target);
+                }
+            }
+            else
+            {
+                cachedPath = findPath(start, target);
+            }
         }
 
         if (cachedPath.isEmpty())
@@ -156,6 +162,119 @@ public final class PathGuidanceOverlay extends Overlay
         }
 
         return null;
+    }
+
+    /**
+     * Builds a collision-aware rolling route toward a destination outside the
+     * currently loaded scene.
+     *
+     * We flood-fill reachable loaded tiles and remember the tile which gets
+     * closest to the real world destination. The overlay therefore leads the
+     * player to the best scene frontier instead of disappearing. As the player
+     * moves and new scene tiles load, the route is recalculated toward the same
+     * final destination.
+     */
+    private List<WorldPoint> findPathTowardDistantTarget(WorldPoint start, WorldPoint finalTarget)
+    {
+        Queue<WorldPoint> open = new ArrayDeque<>();
+        Set<WorldPoint> visited = new HashSet<>();
+        Map<WorldPoint, WorldPoint> parent = new HashMap<>();
+
+        open.add(start);
+        visited.add(start);
+
+        WorldPoint best = start;
+        long bestDistanceSquared = distanceSquared(start, finalTarget);
+
+        while (!open.isEmpty() && visited.size() < MAX_VISITED)
+        {
+            WorldPoint current = open.remove();
+
+            long currentDistanceSquared = distanceSquared(current, finalTarget);
+            if (currentDistanceSquared < bestDistanceSquared)
+            {
+                bestDistanceSquared = currentDistanceSquared;
+                best = current;
+            }
+
+            WorldArea area = new WorldArea(current, 1, 1);
+
+            for (int[] direction : DIRECTIONS)
+            {
+                int dx = direction[0];
+                int dy = direction[1];
+
+                if (!area.canTravelInDirection(client.getTopLevelWorldView(), dx, dy))
+                {
+                    continue;
+                }
+
+                WorldPoint next = new WorldPoint(
+                    current.getX() + dx,
+                    current.getY() + dy,
+                    current.getPlane()
+                );
+
+                if (visited.contains(next) || !isLoaded(next))
+                {
+                    continue;
+                }
+
+                visited.add(next);
+                parent.put(next, current);
+                open.add(next);
+            }
+        }
+
+        if (best.equals(start))
+        {
+            return Collections.emptyList();
+        }
+
+        List<WorldPoint> path = reconstructPath(start, best, parent);
+        if (path.isEmpty())
+        {
+            return path;
+        }
+
+        // Keep only a useful forward segment. Once the player reaches the end,
+        // scene loading changes and the route is rebuilt toward finalTarget.
+        if (path.size() > MAX_DRAW_TILES + 1)
+        {
+            return new ArrayList<>(path.subList(0, MAX_DRAW_TILES + 1));
+        }
+
+        return path;
+    }
+
+    private static long distanceSquared(WorldPoint from, WorldPoint to)
+    {
+        long dx = (long) to.getX() - from.getX();
+        long dy = (long) to.getY() - from.getY();
+        return dx * dx + dy * dy;
+    }
+
+    private static List<WorldPoint> reconstructPath(
+        WorldPoint start,
+        WorldPoint reached,
+        Map<WorldPoint, WorldPoint> parent)
+    {
+        List<WorldPoint> path = new ArrayList<>();
+        WorldPoint cursor = reached;
+        path.add(cursor);
+
+        while (!cursor.equals(start))
+        {
+            cursor = parent.get(cursor);
+            if (cursor == null)
+            {
+                return Collections.emptyList();
+            }
+            path.add(cursor);
+        }
+
+        Collections.reverse(path);
+        return path;
     }
 
     private List<WorldPoint> findPath(WorldPoint start, WorldPoint target)
@@ -221,21 +340,11 @@ public final class PathGuidanceOverlay extends Overlay
             return Collections.emptyList();
         }
 
-        List<WorldPoint> path = new ArrayList<>();
-        WorldPoint cursor = reached;
-        path.add(cursor);
-
-        while (!cursor.equals(start))
+        List<WorldPoint> path = reconstructPath(start, reached, parent);
+        if (path.isEmpty())
         {
-            cursor = parent.get(cursor);
-            if (cursor == null)
-            {
-                return Collections.emptyList();
-            }
-            path.add(cursor);
+            return path;
         }
-
-        Collections.reverse(path);
 
         // Append the actual target tile only when it is walkable/adjacent so the
         // final destination is visually obvious.
